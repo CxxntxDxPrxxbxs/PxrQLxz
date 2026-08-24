@@ -1,0 +1,61 @@
+local DrRay = loadstring(readfile("https://raw.githubusercontent.com/CxxntxDxPrxxbxs/PxrQLxz/refs/heads/main/Dr-Rxy"))()
+
+local window = DrRay:Load("Banananef Hub", "Default")
+
+window:SetDiscord("https://discord.gg/yourinvite")
+
+window:SetAIHandler(function(prompt)
+	return "You said: " .. prompt
+end)
+
+window:AddIcon("home", function()
+	window:Notify({ Title = "Home", Content = "Home icon pressed.", Icon = "🏠" })
+end)
+window:AddIcon("bell", function()
+	window:Notify({ Title = "Alerts", Content = "You have no new alerts.", Icon = "🔔" })
+end)
+window:AddIcon("github", function() end)
+
+local main = DrRay.newTab("Main", "zap")
+
+main.newSection("🚀 Actions")
+
+main.newButton("Kill All", "Eliminate every enemy nearby.", function()
+	print("kill all")
+end, "💀")
+
+main.newButton("Rejoin", "Rejoin the current server.", function()
+	print("rejoin")
+end, "🔁")
+
+main.newParagraph("Read Me", "This paragraph explains what this tab does. It wraps across multiple lines and grows to fit its content automatically.")
+
+main.newToggle("God Mode", "Take no damage.", false, function(state)
+	print("god mode:", state)
+end, "GodMode")
+
+main.newSlider("Walk Speed", "Adjust your character speed.", 250, false, function(v)
+	print("speed:", v)
+end, "WalkSpeed")
+
+main.newDropdown("Target", "Pick a single target.", {"Nearest", "Lowest HP", "Random", "Mouse"}, function(sel)
+	print("target:", sel)
+end, "Target")
+
+main.newDropdown("ESP Options", "Pick multiple.", {"Boxes", "Names", "Tracers", "Health"}, function(selected)
+	for opt in pairs(selected) do print("esp on:", opt) end
+end, { Multi = true, Flag = "ESP" })
+
+main.newColorPicker("ESP Color", "Pick from many colors.", Color3.fromRGB(0, 255, 39), function(c)
+	print("esp color:", c)
+end, "ESPColor")
+
+main.newInput("Webhook", "Paste your webhook URL.", function(text)
+	print("webhook:", text)
+end, "Webhook")
+
+main.newKeybind("Toggle UI", "Bind a key to toggle the menu.", function(input)
+	print("bound:", input.KeyCode)
+end, "ToggleKey")
+
+window:CreateSettingsTab("Settings")
