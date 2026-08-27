@@ -1,115 +1,61 @@
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/CxxntxDxPrxxbxs/PxrQLxz/refs/heads/main/Dr-Rxy"))()
+local DrRay = loadstring(game:HttpGet("https://raw.githubusercontent.com/CxxntxDxPrxxbxs/PxrQLxz/refs/heads/main/Dr-Rxy"))()
 
-local Window = Library:Load("Banananef Hub", "Default")
+local window = DrRay:Load("Banananef Hub", "Default")
 
-Window:SetDiscord("https://discord.gg/yourinvite")
+window:SetDiscord("https://discord.gg/yourinvite")
 
-
-Window:SetAIHandler(function(prompt)
-
-    return "Simulated response for: " .. prompt
+window:SetAIHandler(function(prompt)
+	return "You said: " .. prompt
 end)
 
-Window:Notify({
-    Title = "Loaded",
-    Content = "DrRay started successfully.",
-    Duration = 4,
-})
-
-Window:AddIcon("settings", function()
-    Window:Notify({ Title = "Icon", Content = "Settings icon clicked." })
+window:AddIcon("home", function()
+	window:Notify({ Title = "Home", Content = "Home icon pressed.", Icon = "" })
 end)
-
-Window:SetAutoSave(true)
-
-local MainTab = Library.newTab("Main", "house")
-local VisualsTab = Library.newTab("Visuals", "eye")
-local MiscTab = Library.newTab("Misc", "wrench")
-
-MainTab.newSection("Combat")
-
-MainTab.newButton("Kill Aura", "Activates the basic kill aura.", function()
-    print("Kill Aura executed")
+window:AddIcon("bell", function()
+	window:Notify({ Title = "Alerts", Content = "You have no new alerts.", Icon = "" })
 end)
+window:AddIcon("github", function() end)
 
-MainTab.newParagraph("Info", "This hub targets Muscle Legends. Use the tabs to navigate between categories.")
+local main = DrRay.newTab("Main", "zap")
 
-MainTab.newToggle("Auto Farm", "Enables/disables auto farm.", false, function(state)
-    print("Auto Farm:", state)
-end, "AutoFarmFlag")
+main.newSection("Actions")
 
-MainTab.newSlider("Walkspeed", "Changes your walk speed.", 200, false, function(value)
-    print("Walkspeed:", value)
-end, "WalkspeedFlag")
+main.newButton("Kill All", "Eliminate every enemy nearby.", function()
+	print("kill all")
+end, "")
 
-MainTab.newInput("Target Name", "Type the exact player name.", function(text)
-    print("Target:", text)
-end, "TargetFlag")
+main.newButton("Rejoin", "Rejoin the current server.", function()
+	print("rejoin")
+end, "")
 
-MainTab.newKeybind("Toggle Menu", "Press to bind a key.", function(input)
-    print("New key bound:", input.KeyCode and input.KeyCode.Name or input.UserInputType.Name)
-end, "MenuKeybindFlag")
+main.newParagraph("Read Me", "This paragraph explains what this tab does. It wraps across multiple lines and grows to fit its content automatically.")
 
-VisualsTab.newSection("Appearance")
+main.newToggle("God Mode", "Take no damage.", false, function(state)
+	print("god mode:", state)
+end, "GodMode")
 
-VisualsTab.newLabel("Hub visual settings")
+main.newSlider("Walk Speed", "Adjust your character speed.", 250, false, function(v)
+	print("speed:", v)
+end, "WalkSpeed")
 
-VisualsTab.newDropdown("ESP Mode", "Choose the ESP mode.", { "Box", "Highlight", "Skeleton", "None" }, function(selected)
-    print("ESP Mode:", selected)
-end, "ESPModeFlag")
+main.newDropdown("Target", "Pick a single target.", {"Nearest", "Lowest HP", "Random", "Mouse"}, function(sel)
+	print("target:", sel)
+end, "Target")
 
-VisualsTab.newDropdown("ESP Targets", "Select what to show (multi).", { "Players", "NPCs", "Items", "Chests" }, function(selectedSet)
-    for name in pairs(selectedSet) do
-        print("Active ESP target:", name)
-    end
-end, { Flag = "ESPTargetsFlag", Multi = true })
+main.newDropdown("ESP Options", "Pick multiple.", {"Boxes", "Names", "Tracers", "Health"}, function(selected)
+	for opt in pairs(selected) do print("esp on:", opt) end
+end, { Multi = true, Flag = "ESP" })
 
-VisualsTab.newColorPicker("ESP Color", "Color used for ESP.", Color3.fromRGB(0, 255, 39), function(color)
-    print("New ESP color:", color)
-end, "ESPColorFlag")
+main.newColorPicker("ESP Color", "Pick from many colors.", Color3.fromRGB(0, 255, 39), function(c)
+	print("esp color:", c)
+end, "ESPColor")
 
-MiscTab.newSection("Utilities")
+main.newInput("Webhook", "Paste your webhook URL.", function(text)
+	print("webhook:", text)
+end, "Webhook")
 
-MiscTab.newButton("Open AI Panel", "Opens the AI assistant panel.", function()
-    Window:OpenAI()
-end)
+main.newKeybind("Toggle UI", "Bind a key to toggle the menu.", function(input)
+	print("bound:", input.KeyCode)
+end, "ToggleKey")
 
-MiscTab.newButton("Set Theme: Cyberpunk", "Applies the Cyberpunk theme.", function()
-    Window:SetTheme("Cyberpunk")
-end)
-
-MiscTab.newButton("List Themes", "Prints every available theme.", function()
-    for _, name in ipairs(Window:ListThemes()) do
-        print("Theme:", name)
-    end
-end)
-
-MiscTab.newButton("Check Flag", "Prints the saved walkspeed value.", function()
-    print("Current walkspeed:", Window:GetFlag("WalkspeedFlag"))
-end)
-
-MiscTab.newButton("Save Config", "Saves the config manually.", function()
-    local ok, err = Window:SaveConfig("myconfig")
-    print("Saved:", ok, err)
-end)
-
-MiscTab.newButton("Load Config", "Loads the config manually.", function()
-    local ok, err = Window:LoadConfig("myconfig")
-    print("Loaded:", ok, err)
-end)
-
-MiscTab.newButton("List Configs", "Prints every saved config.", function()
-    for _, name in ipairs(Window:ListConfigs()) do
-        print("Config:", name)
-    end
-end)
-
-MiscTab.newButton("Toggle Window", "Opens/closes the main window.", function()
-    Window:Toggle()
-end)
-
-MiscTab.newButton("Hide Close Button", "Removes the close button from the topbar.", function()
-    Window:HideCloseButton()
-end)
-
-Window:CreateSettingsTab("Settings")
+window:CreateSettingsTab("Settings")
