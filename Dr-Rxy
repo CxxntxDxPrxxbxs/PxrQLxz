@@ -1306,6 +1306,24 @@ local function corner(o, r)
 	return c
 end
 
+local IS_MOBILE = (function()
+	local ok1, touch = pcall(function() return UIS.TouchEnabled end)
+	local ok2, mouse = pcall(function() return UIS.MouseEnabled end)
+	return (ok1 and touch) and not (ok2 and mouse)
+end)()
+
+local function capLabel(lbl, maxPC, minSize)
+	if not lbl then return end
+	minSize = minSize or math.max(8, math.floor(maxPC * 0.6))
+	local maxSize = IS_MOBILE and math.max(minSize, math.floor(maxPC * 0.8)) or maxPC
+	local c = lbl:FindFirstChildOfClass("UITextSizeConstraint")
+	if not c then c = Instance.new("UITextSizeConstraint", lbl) end
+	c.MaxTextSize = maxSize
+	c.MinTextSize = minSize
+	lbl.TextScaled = true
+	return c
+end
+
 local function pad(o, p)
 	local u = Instance.new("UIPadding", o)
 	u.PaddingLeft = UDim.new(0, p)
@@ -1371,7 +1389,7 @@ local function setTheme(main, color2)
 	local accentRefs = { oldAccent, Color3.fromRGB(0,255,39), Color3.fromRGB(0,255,38) }
 	local function isMain(c) for _, r in ipairs(mainRefs) do if near(c, r) then return true end end return false end
 	local function isAccent(c) for _, r in ipairs(accentRefs) do if near(c, r) then return true end end return false end
-	for _, v in ipairs(parent:GetDescendants()) do
+	local function apply(v)
 		pcall(function()
 			if v:IsA("GuiObject") then
 				if isAccent(v.BackgroundColor3) then
@@ -1379,11 +1397,19 @@ local function setTheme(main, color2)
 				elseif isMain(v.BackgroundColor3) then
 					v.BackgroundColor3 = main
 				end
+				if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("TextBox") then
+					if isAccent(v.TextColor3) then v.TextColor3 = color2 end
+				end
+				if v:IsA("ImageLabel") or v:IsA("ImageButton") then
+					if isAccent(v.ImageColor3) then v.ImageColor3 = color2 end
+				end
 			elseif v:IsA("UIStroke") then
 				if isAccent(v.Color) then v.Color = color2 end
+				if isMain(v.Color) then v.Color = main end
 			end
 		end)
 	end
+	for _, v in ipairs(parent:GetDescendants()) do apply(v) end
 	GlobalColor1, GlobalColor2 = main, color2
 end
 
@@ -1552,14 +1578,16 @@ local function doNotify(opts)
 	trl.Padding = UDim.new(0, 6)
 	trl.SortOrder = Enum.SortOrder.LayoutOrder
 	if opts.Icon then
-		local ic = Instance.new("ImageLabel")
-		ic.BackgroundTransparency = 1
-		ic.BorderSizePixel = 0
-		ic.Size = UDim2.new(0, 16, 0, 16)
-		ic.ImageColor3 = GlobalColor2
-		ic.LayoutOrder = 1
-		ic.Parent = titleRow
-		if not applyIcon(ic, opts.Icon) then ic:Destroy() end
+		pcall(function()
+			local ic = Instance.new("ImageLabel")
+			ic.BackgroundTransparency = 1
+			ic.BorderSizePixel = 0
+			ic.Size = UDim2.new(0, 16, 0, 16)
+			ic.ImageColor3 = GlobalColor2
+			ic.LayoutOrder = 1
+			ic.Parent = titleRow
+			if not applyIcon(ic, opts.Icon) then ic:Destroy() end
+		end)
 	end
 	local title = Instance.new("TextLabel")
 	title.BackgroundTransparency = 1
@@ -1593,13 +1621,18 @@ local function doNotify(opts)
 	tween(title, 0.2, { TextTransparency = 0 })
 	tween(body, 0.2, { TextTransparency = 0 })
 	tween(st, 0.2, { Transparency = 0.3 })
-	task.delay(opts.Duration or 4, function()
-		tween(card, 0.25, { BackgroundTransparency = 1 })
-		tween(title, 0.25, { TextTransparency = 1 })
-		tween(body, 0.25, { TextTransparency = 1 })
-		tween(st, 0.25, { Transparency = 1 })
+	local lifetime = opts.Duration or 4
+	game:GetService("Debris"):AddItem(card, lifetime + 1)
+	task.delay(lifetime, function()
+		if not card.Parent then return end
+		pcall(function()
+			tween(card, 0.25, { BackgroundTransparency = 1 })
+			tween(title, 0.25, { TextTransparency = 1 })
+			tween(body, 0.25, { TextTransparency = 1 })
+			tween(st, 0.25, { Transparency = 1 })
+		end)
 		task.wait(0.3)
-		card:Destroy()
+		if card.Parent then card:Destroy() end
 	end)
 end
 UILIB.Notify = function(_, opts) if type(_) == "table" and opts == nil then doNotify(_) else doNotify(opts) end end
@@ -1673,6 +1706,19 @@ parent.TopBar.ProfileMenu.PlayerProfile.TextLabel.Text = LP.DisplayName
 pcall(function()
 	parent.TopBar.ProfileMenu.PlayerProfile.ImageLabel.Image = Players:GetUserThumbnailAsync(LP.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
 end)
+
+do
+	local mbStroke = Instance.new("UIStroke", parent.MainBar)
+	mbStroke.Color = GlobalColor2
+	mbStroke.Thickness = 1.5
+	mbStroke.Transparency = 0.2
+	mbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	local tbStroke = Instance.new("UIStroke", parent.TopBar)
+	tbStroke.Color = GlobalColor2
+	tbStroke.Thickness = 1.5
+	tbStroke.Transparency = 0.2
+	tbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+end
 
 do
 	local sf = parent.TopBar.ScrollingFrame
@@ -1769,18 +1815,16 @@ function UILIB:Load(name, img, direction)
 		b.BackgroundTransparency = isUser and 0.1 or 0
 		b.BorderSizePixel = 0
 		b.AutomaticSize = Enum.AutomaticSize.Y
-		b.Size = UDim2.new(0, 0, 0, 0)
+		b.Size = UDim2.new(0.78, -30, 0, 0)
 		b.LayoutOrder = isUser and 1 or 2
 		b.Parent = row
-		local bSC = Instance.new("UISizeConstraint", b)
-		bSC.MaxSize = Vector2.new(280, math.huge)
 		corner(b, 0.2)
 		pad(b, 8)
 
 		local t = Instance.new("TextLabel")
 		t.BackgroundTransparency = 1
-		t.AutomaticSize = Enum.AutomaticSize.XY
-		t.Size = UDim2.new(0, 0, 0, 0)
+		t.AutomaticSize = Enum.AutomaticSize.Y
+		t.Size = UDim2.new(1, 0, 0, 0)
 		t.FontFace = FONT
 		t.TextColor3 = isUser and Color3.fromRGB(20, 24, 32) or Color3.fromRGB(230, 235, 245)
 		t.TextXAlignment = Enum.TextXAlignment.Left
@@ -1789,8 +1833,6 @@ function UILIB:Load(name, img, direction)
 		t.TextSize = 13
 		t.Text = tostring(text)
 		t.Parent = b
-		local tSC = Instance.new("UISizeConstraint", t)
-		tSC.MaxSize = Vector2.new(264, math.huge)
 
 		return row
 	end
@@ -2247,6 +2289,8 @@ function UILIB.newTab(name, img)
 		newbtn.Visible = true
 		newbtn.Name = name
 		hoverCard(newbtn)
+		capLabel(newbtn.Title, 20, 13)
+		capLabel(newbtn.Description, 15, 10)
 		if icon then
 			local img = Instance.new("ImageLabel")
 			img.Name = "Icon"
@@ -2291,6 +2335,7 @@ function UILIB.newTab(name, img)
 		t.TextScaled = true
 		t.Text = tostring(text)
 		t.Parent = f
+		capLabel(t, 18, 12)
 		local p = Instance.new("UIPadding", t)
 		p.PaddingTop = UDim.new(0.2, 0)
 		p.PaddingBottom = UDim.new(0.2, 0)
@@ -2309,20 +2354,20 @@ function UILIB.newTab(name, img)
 		corner(f, 0.06)
 		hoverCard(f)
 		local list = Instance.new("UIListLayout", f)
-		list.Padding = UDim.new(0, 2)
+		list.Padding = UDim.new(0, 3)
 		list.SortOrder = Enum.SortOrder.LayoutOrder
 		local p = Instance.new("UIPadding", f)
 		p.PaddingLeft = UDim.new(0.018, 0)
 		p.PaddingRight = UDim.new(0.018, 0)
-		p.PaddingTop = UDim.new(0, 6)
-		p.PaddingBottom = UDim.new(0, 6)
+		p.PaddingTop = UDim.new(0, 9)
+		p.PaddingBottom = UDim.new(0, 9)
 		local t = Instance.new("TextLabel")
 		t.BackgroundTransparency = 1
-		t.Size = UDim2.new(1, 0, 0, 14)
+		t.Size = UDim2.new(1, 0, 0, IS_MOBILE and 15 or 18)
 		t.FontFace = FONT_BOLD
 		t.TextColor3 = Color3.fromRGB(255, 255, 255)
 		t.TextXAlignment = Enum.TextXAlignment.Left
-		t.TextSize = 13
+		t.TextSize = IS_MOBILE and 13 or 16
 		t.Text = tostring(title)
 		t.LayoutOrder = 1
 		t.Parent = f
@@ -2335,7 +2380,7 @@ function UILIB.newTab(name, img)
 		c.TextXAlignment = Enum.TextXAlignment.Left
 		c.TextYAlignment = Enum.TextYAlignment.Top
 		c.TextWrapped = true
-		c.TextSize = 11
+		c.TextSize = IS_MOBILE and 11 or 13
 		c.Text = tostring(content or "")
 		c.LayoutOrder = 2
 		c.Parent = f
@@ -2364,6 +2409,9 @@ function UILIB.newTab(name, img)
 		newInput.Title.Text = name
 		newInput.Description.Text = desc or ""
 		newInput.Name = name
+		capLabel(newInput.Title, 18, 12)
+		capLabel(newInput.Description, 14, 10)
+		capLabel(textbox, 14, 10)
 		textbox.FocusLost:Connect(function()
 			if func then pcall(func, textbox.Text) end
 			onChanged()
@@ -2383,6 +2431,9 @@ function UILIB.newTab(name, img)
 		newKey.Name = name
 		newKey.Description.Text = desc or ""
 		newKey.Visible = true
+		capLabel(newKey.Title, 18, 12)
+		capLabel(newKey.Description, 14, 10)
+		capLabel(newKey.Bind.Button, 13, 9)
 		local listening = false
 		local a
 		local current = "key"
@@ -2430,11 +2481,14 @@ function UILIB.newTab(name, img)
 		newSlider.Parent = newTab
 		newSlider.Title.Text = name
 		newSlider.Description.Text = desc or ""
+		capLabel(newSlider.Title, 18, 12)
+		capLabel(newSlider.Description, 14, 10)
 		local Mouse = LP:GetMouse()
 		local Trigger = newSlider.ActualSlider.Trigger
 		local Label = newSlider.ActualSlider.Title
 		local Fill = newSlider.ActualSlider.Fill
 		local Parent = newSlider.ActualSlider
+		capLabel(Label, 15, 10)
 		local perc = 0
 		local MouseDown = false
 		local function apply(p, fire)
@@ -2473,6 +2527,8 @@ function UILIB.newTab(name, img)
 		newToggle.Visible = true
 		newToggle.Title.Text = title
 		newToggle.Description.Text = desc or ""
+		capLabel(newToggle.Title, 18, 12)
+		capLabel(newToggle.Description, 14, 10)
 		hoverCard(newToggle)
 		local function paint(fire)
 			tween(newToggle.Label, 0.2, { BackgroundColor3 = realToggle and GlobalColor2 or GlobalColor1 })
@@ -2502,64 +2558,50 @@ function UILIB.newTab(name, img)
 		card.BackgroundColor3 = Color3.fromRGB(40, 45, 62)
 		card.BackgroundTransparency = 0.4
 		card.BorderSizePixel = 0
-		card.Size = UDim2.new(0.9614, 0, 0, 62)
-		card.AutomaticSize = Enum.AutomaticSize.Y
+		card.Size = UDim2.new(0.9614325165748596, 0, 0.2624756097793579, 0)
 		card.ClipsDescendants = false
 		card.Parent = newTab
-		corner(card, 0.14)
+		corner(card, 0.06)
 		hoverCard(card)
-
-		local cardPad = Instance.new("UIPadding", card)
-		cardPad.PaddingLeft = UDim.new(0, 12)
-		cardPad.PaddingRight = UDim.new(0, 12)
-		cardPad.PaddingTop = UDim.new(0, 10)
-		cardPad.PaddingBottom = UDim.new(0, 10)
-
-		local cardList = Instance.new("UIListLayout", card)
-		cardList.Padding = UDim.new(0, 6)
-		cardList.SortOrder = Enum.SortOrder.LayoutOrder
-
-		local header = Instance.new("Frame")
-		header.BackgroundTransparency = 1
-		header.Size = UDim2.new(1, 0, 0, 30)
-		header.LayoutOrder = 1
-		header.Parent = card
 
 		local titleL = Instance.new("TextLabel")
 		titleL.BackgroundTransparency = 1
-		titleL.Size = UDim2.new(0.55, 0, 0, 14)
+		titleL.Position = UDim2.new(0.017191976308822632, 0, 0.10911344736814499, 0)
+		titleL.Size = UDim2.new(0.9656160473823547, 0, 0.19094853103160858, 0)
 		titleL.FontFace = FONT_BOLD
 		titleL.TextColor3 = Color3.fromRGB(255, 255, 255)
 		titleL.TextXAlignment = Enum.TextXAlignment.Left
-		titleL.TextSize = 13
+		titleL.TextScaled = true
 		titleL.Text = tostring(name)
-		titleL.Parent = header
+		titleL.Parent = card
+		capLabel(titleL, 18, 12)
 
 		local descL = Instance.new("TextLabel")
 		descL.BackgroundTransparency = 1
-		descL.Position = UDim2.new(0, 0, 0, 16)
-		descL.Size = UDim2.new(0.55, 0, 0, 12)
+		descL.Position = UDim2.new(0.011461317539215088, 0, 0.7092373967170715, 0)
+		descL.Size = UDim2.new(0.9656160473823547, 0, 0.15457738935947418, 0)
 		descL.FontFace = FONT_ITALIC
 		descL.TextColor3 = Color3.fromRGB(190, 195, 210)
 		descL.TextXAlignment = Enum.TextXAlignment.Left
-		descL.TextSize = 11
+		descL.TextScaled = true
 		descL.Text = tostring(desc or "")
-		descL.Parent = header
+		descL.Parent = card
+		capLabel(descL, 14, 10)
 
 		local pill = Instance.new("TextButton")
-		pill.AnchorPoint = Vector2.new(1, 0.5)
-		pill.Position = UDim2.new(1, 0, 0.5, 0)
-		pill.Size = UDim2.new(0.4, 0, 0, 28)
+		pill.Position = UDim2.new(0.014326647855341434, 0, 0.34552592039108276, 0)
+		pill.Size = UDim2.new(0.9684813618659973, 0, 0.29096919298171997, 0)
 		pill.BackgroundColor3 = Color3.fromRGB(30, 34, 48)
 		pill.BorderSizePixel = 0
 		pill.AutoButtonColor = false
 		pill.FontFace = FONT
 		pill.TextColor3 = Color3.fromRGB(235, 235, 245)
 		pill.TextXAlignment = Enum.TextXAlignment.Left
-		pill.TextSize = 12
+		pill.TextScaled = true
 		pill.Text = " none"
-		pill.Parent = header
-		corner(pill, 0.25)
+		pill.Parent = card
+		corner(pill, 0.2)
+		capLabel(pill, 15, 10)
 		local pillStroke = Instance.new("UIStroke", pill)
 		pillStroke.Color = Color3.fromRGB(70, 76, 96)
 		pillStroke.Transparency = 0.2
@@ -2572,8 +2614,8 @@ function UILIB.newTab(name, img)
 		chev.BackgroundTransparency = 1
 		chev.BorderSizePixel = 0
 		chev.AnchorPoint = Vector2.new(1, 0.5)
-		chev.Position = UDim2.new(1, -8, 0.5, 0)
-		chev.Size = UDim2.new(0, 12, 0, 12)
+		chev.Position = UDim2.new(1, -10, 0.5, 0)
+		chev.Size = UDim2.new(0, 14, 0, 14)
 		chev.ImageColor3 = Color3.fromRGB(190, 195, 210)
 		chev.Rotation = 0
 		chev.Parent = pill
@@ -2584,11 +2626,10 @@ function UILIB.newTab(name, img)
 		local body = Instance.new("Frame")
 		body.BackgroundColor3 = Color3.fromRGB(24, 27, 40)
 		body.BorderSizePixel = 0
-		body.Size = UDim2.new(1, 0, 0, 0)
+		body.Size = UDim2.new(0.9614325165748596, 0, 0, 0)
 		body.Visible = false
 		body.ClipsDescendants = true
-		body.LayoutOrder = 2
-		body.Parent = card
+		body.Parent = newTab
 		corner(body, 0.1)
 		local bodyStroke = Instance.new("UIStroke", body)
 		bodyStroke.Color = Color3.fromRGB(70, 76, 96)
@@ -2601,16 +2642,17 @@ function UILIB.newTab(name, img)
 		bodyPad.PaddingTop = UDim.new(0, 6)
 		bodyPad.PaddingBottom = UDim.new(0, 6)
 
+		local searchH = IS_MOBILE and 24 or 30
 		local search = Instance.new("TextBox")
 		search.BackgroundColor3 = Color3.fromRGB(32, 36, 52)
 		search.BorderSizePixel = 0
-		search.Size = UDim2.new(1, 0, 0, 24)
+		search.Size = UDim2.new(1, 0, 0, searchH)
 		search.FontFace = FONT
 		search.TextColor3 = Color3.fromRGB(235, 235, 245)
 		search.PlaceholderColor3 = Color3.fromRGB(140, 145, 160)
 		search.PlaceholderText = "Search..."
 		search.Text = ""
-		search.TextSize = 12
+		search.TextSize = IS_MOBILE and 12 or 14
 		search.TextXAlignment = Enum.TextXAlignment.Left
 		search.ClearTextOnFocus = false
 		search.Parent = body
@@ -2622,8 +2664,8 @@ function UILIB.newTab(name, img)
 		local scroll = Instance.new("ScrollingFrame")
 		scroll.BackgroundTransparency = 1
 		scroll.BorderSizePixel = 0
-		scroll.Position = UDim2.new(0, 0, 0, 30)
-		scroll.Size = UDim2.new(1, 0, 1, -30)
+		scroll.Position = UDim2.new(0, 0, 0, searchH + 6)
+		scroll.Size = UDim2.new(1, 0, 1, -(searchH + 6))
 		scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 		scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 		scroll.ScrollBarThickness = 3
@@ -2645,17 +2687,19 @@ function UILIB.newTab(name, img)
 			end
 		end
 
+		local itemH = IS_MOBILE and 26 or 34
+		local itemTextSize = IS_MOBILE and 12 or 15
 		local function makeItem(i, list)
 			local key = tostring(list)
 			local item = Instance.new("TextButton")
 			item.BackgroundColor3 = Color3.fromRGB(32, 36, 52)
 			item.BackgroundTransparency = 1
 			item.BorderSizePixel = 0
-			item.Size = UDim2.new(1, 0, 0, 26)
+			item.Size = UDim2.new(1, 0, 0, itemH)
 			item.FontFace = FONT
 			item.TextColor3 = Color3.fromRGB(200, 205, 220)
 			item.TextXAlignment = Enum.TextXAlignment.Left
-			item.TextSize = 12
+			item.TextSize = itemTextSize
 			item.Text = "  " .. key
 			item.AutoButtonColor = false
 			item.LayoutOrder = i
@@ -2667,7 +2711,7 @@ function UILIB.newTab(name, img)
 			check.BorderSizePixel = 0
 			check.AnchorPoint = Vector2.new(1, 0.5)
 			check.Position = UDim2.new(1, -8, 0.5, 0)
-			check.Size = UDim2.new(0, 12, 0, 12)
+			check.Size = UDim2.new(0, IS_MOBILE and 12 or 14, 0, IS_MOBILE and 12 or 14)
 			check.ImageColor3 = GlobalColor2
 			check.ImageTransparency = 1
 			check.Parent = item
@@ -2718,14 +2762,14 @@ function UILIB.newTab(name, img)
 			if isOpen then return end
 			isOpen = true
 			body.Visible = true
-			body.Size = UDim2.new(1, 0, 0, 0)
-			tween(body, 0.18, { Size = UDim2.new(1, 0, 0, 180) })
+			body.Size = UDim2.new(0.9614325165748596, 0, 0, 0)
+			tween(body, 0.18, { Size = UDim2.new(0.9614325165748596, 0, 0, IS_MOBILE and 160 or 210) })
 			tween(chev, 0.18, { Rotation = 180 })
 		end
 		closeBox = function()
 			if not isOpen then return end
 			isOpen = false
-			tween(body, 0.15, { Size = UDim2.new(1, 0, 0, 0) })
+			tween(body, 0.15, { Size = UDim2.new(0.9614325165748596, 0, 0, 0) })
 			tween(chev, 0.18, { Rotation = 0 })
 			task.wait(0.15)
 			if not isOpen then body.Visible = false end
@@ -2786,71 +2830,86 @@ function UILIB.newTab(name, img)
 	end
 
 	function self.newColorPicker(name, desc, default, func, flag)
-		local frame = Instance.new("Frame")
-		frame.BackgroundColor3 = Color3.fromRGB(40, 45, 62)
-		frame.BackgroundTransparency = 0.4
-		frame.BorderSizePixel = 0
-		frame.Size = UDim2.new(0.9614, 0, 0.05, 0)
-		frame.AutomaticSize = Enum.AutomaticSize.Y
-		frame.Name = name
-		frame.Parent = newTab
-		corner(frame, 0.06)
-		hoverCard(frame)
-		local p = Instance.new("UIPadding", frame)
-		p.PaddingLeft = UDim.new(0.02, 0)
-		p.PaddingRight = UDim.new(0.02, 0)
-		p.PaddingTop = UDim.new(0, 8)
-		p.PaddingBottom = UDim.new(0, 8)
-		local list = Instance.new("UIListLayout", frame)
-		list.Padding = UDim.new(0, 4)
-		list.SortOrder = Enum.SortOrder.LayoutOrder
-		local top = Instance.new("Frame")
-		top.BackgroundTransparency = 1
-		top.Size = UDim2.new(1, 0, 0, 34)
-		top.LayoutOrder = 1
-		top.Parent = frame
-		local title = Instance.new("TextLabel")
-		title.BackgroundTransparency = 1
-		title.Size = UDim2.new(0.7, 0, 0.55, 0)
-		title.FontFace = FONT_BOLD
-		title.TextColor3 = Color3.fromRGB(255, 255, 255)
-		title.TextXAlignment = Enum.TextXAlignment.Left
-		title.TextScaled = true
-		title.Text = tostring(name)
-		title.Parent = top
+		local card = Instance.new("Frame")
+		card.Name = name
+		card.BackgroundColor3 = Color3.fromRGB(40, 45, 62)
+		card.BackgroundTransparency = 0.4
+		card.BorderSizePixel = 0
+		card.Size = UDim2.new(0.9614325165748596, 0, 0.2624756097793579, 0)
+		card.ClipsDescendants = false
+		card.Parent = newTab
+		corner(card, 0.06)
+		hoverCard(card)
+
+		local titleL = Instance.new("TextLabel")
+		titleL.BackgroundTransparency = 1
+		titleL.Position = UDim2.new(0.017191976308822632, 0, 0.10911344736814499, 0)
+		titleL.Size = UDim2.new(0.9656160473823547, 0, 0.19094853103160858, 0)
+		titleL.FontFace = FONT_BOLD
+		titleL.TextColor3 = Color3.fromRGB(255, 255, 255)
+		titleL.TextXAlignment = Enum.TextXAlignment.Left
+		titleL.TextScaled = true
+		titleL.Text = tostring(name)
+		titleL.Parent = card
+		capLabel(titleL, 18, 12)
+
 		local descL = Instance.new("TextLabel")
 		descL.BackgroundTransparency = 1
-		descL.Position = UDim2.new(0, 0, 0.55, 0)
-		descL.Size = UDim2.new(0.7, 0, 0.45, 0)
+		descL.Position = UDim2.new(0.011461317539215088, 0, 0.7092373967170715, 0)
+		descL.Size = UDim2.new(0.9656160473823547, 0, 0.15457738935947418, 0)
 		descL.FontFace = FONT_ITALIC
 		descL.TextColor3 = Color3.fromRGB(190, 195, 210)
 		descL.TextXAlignment = Enum.TextXAlignment.Left
 		descL.TextScaled = true
 		descL.Text = tostring(desc or "")
-		descL.Parent = top
+		descL.Parent = card
+		capLabel(descL, 14, 10)
+
 		local swatch = Instance.new("TextButton")
-		swatch.AnchorPoint = Vector2.new(1, 0.5)
-		swatch.Position = UDim2.new(1, 0, 0.5, 0)
-		swatch.Size = UDim2.new(0, 40, 0, 22)
+		swatch.Position = UDim2.new(0.014326647855341434, 0, 0.34552592039108276, 0)
+		swatch.Size = UDim2.new(0.9684813618659973, 0, 0.29096919298171997, 0)
 		swatch.BackgroundColor3 = default or GlobalColor2
+		swatch.BorderSizePixel = 0
 		swatch.Text = ""
 		swatch.AutoButtonColor = false
-		swatch.Parent = top
-		corner(swatch, 0.3)
+		swatch.Parent = card
+		corner(swatch, 0.2)
 		local sstroke = Instance.new("UIStroke", swatch)
 		sstroke.Color = Color3.fromRGB(255, 255, 255)
 		sstroke.Transparency = 0.6
+
+		local hexLabel = Instance.new("TextLabel")
+		hexLabel.BackgroundTransparency = 1
+		hexLabel.Size = UDim2.new(1, 0, 1, 0)
+		hexLabel.FontFace = FONT_BOLD
+		hexLabel.TextColor3 = Color3.fromRGB(20, 20, 20)
+		hexLabel.TextScaled = true
+		hexLabel.Text = ""
+		hexLabel.Parent = swatch
+
 		local grid = Instance.new("Frame")
-		grid.BackgroundTransparency = 1
-		grid.Size = UDim2.new(1, 0, 0, 0)
-		grid.AutomaticSize = Enum.AutomaticSize.Y
+		grid.BackgroundColor3 = Color3.fromRGB(24, 27, 40)
+		grid.BorderSizePixel = 0
+		grid.Size = UDim2.new(0.9614325165748596, 0, 0, 0)
 		grid.Visible = false
-		grid.LayoutOrder = 2
-		grid.Parent = frame
+		grid.ClipsDescendants = true
+		grid.Parent = newTab
+		corner(grid, 0.1)
+		local gStroke = Instance.new("UIStroke", grid)
+		gStroke.Color = Color3.fromRGB(70, 76, 96)
+		gStroke.Transparency = 0.3
+		gStroke.Thickness = 1
+		local gPad = Instance.new("UIPadding", grid)
+		gPad.PaddingLeft = UDim.new(0, 8)
+		gPad.PaddingRight = UDim.new(0, 8)
+		gPad.PaddingTop = UDim.new(0, 8)
+		gPad.PaddingBottom = UDim.new(0, 8)
 		local gl = Instance.new("UIGridLayout", grid)
-		gl.CellSize = UDim2.new(0, 22, 0, 22)
-		gl.CellPadding = UDim2.new(0, 5, 0, 5)
+		local swSize = IS_MOBILE and 24 or 30
+		gl.CellSize = UDim2.new(0, swSize, 0, swSize)
+		gl.CellPadding = UDim2.new(0, 6, 0, 6)
 		gl.SortOrder = Enum.SortOrder.LayoutOrder
+
 		local value = default or GlobalColor2
 		local function pick(c, fire)
 			value = c
@@ -2860,6 +2919,7 @@ function UILIB.newTab(name, img)
 		for i, c in ipairs(PALETTE) do
 			local sw = Instance.new("TextButton")
 			sw.BackgroundColor3 = c
+			sw.BorderSizePixel = 0
 			sw.Text = ""
 			sw.AutoButtonColor = false
 			sw.LayoutOrder = i
@@ -2870,7 +2930,26 @@ function UILIB.newTab(name, img)
 				onChanged()
 			end)
 		end
-		swatch.MouseButton1Click:Connect(function() grid.Visible = not grid.Visible end)
+
+		local isOpen = false
+		local function openGrid()
+			if isOpen then return end
+			isOpen = true
+			grid.Visible = true
+			grid.Size = UDim2.new(0.9614325165748596, 0, 0, 0)
+			tween(grid, 0.18, { Size = UDim2.new(0.9614325165748596, 0, 0, IS_MOBILE and 150 or 180) })
+		end
+		local function closeGrid()
+			if not isOpen then return end
+			isOpen = false
+			tween(grid, 0.15, { Size = UDim2.new(0.9614325165748596, 0, 0, 0) })
+			task.wait(0.15)
+			if not isOpen then grid.Visible = false end
+		end
+		swatch.MouseButton1Click:Connect(function()
+			if isOpen then closeGrid() else openGrid() end
+		end)
+
 		registerFlag(flag, function() return value end, function(v) if typeof(v) == "Color3" then pick(v, true) end end)
 		return { Set = function(_, c) pick(c, true) end, Get = function() return value end }
 	end
