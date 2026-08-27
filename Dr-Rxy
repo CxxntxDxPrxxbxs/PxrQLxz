@@ -1541,16 +1541,37 @@ local function doNotify(opts)
 	local layout = Instance.new("UIListLayout", card)
 	layout.Padding = UDim.new(0, 3)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	local titleRow = Instance.new("Frame")
+	titleRow.BackgroundTransparency = 1
+	titleRow.Size = UDim2.new(1, 0, 0, 18)
+	titleRow.LayoutOrder = 1
+	titleRow.Parent = card
+	local trl = Instance.new("UIListLayout", titleRow)
+	trl.FillDirection = Enum.FillDirection.Horizontal
+	trl.VerticalAlignment = Enum.VerticalAlignment.Center
+	trl.Padding = UDim.new(0, 6)
+	trl.SortOrder = Enum.SortOrder.LayoutOrder
+	if opts.Icon then
+		local ic = Instance.new("ImageLabel")
+		ic.BackgroundTransparency = 1
+		ic.BorderSizePixel = 0
+		ic.Size = UDim2.new(0, 16, 0, 16)
+		ic.ImageColor3 = GlobalColor2
+		ic.LayoutOrder = 1
+		ic.Parent = titleRow
+		if not applyIcon(ic, opts.Icon) then ic:Destroy() end
+	end
 	local title = Instance.new("TextLabel")
 	title.BackgroundTransparency = 1
-	title.Size = UDim2.new(1, 0, 0, 16)
+	title.Size = UDim2.new(1, -22, 1, 0)
+	title.AutomaticSize = Enum.AutomaticSize.X
 	title.FontFace = FONT_BOLD
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.TextSize = 15
-	title.Text = tostring((opts.Icon and (opts.Icon .. " ") or "") .. (opts.Title or "Notification"))
-	title.Parent = card
-	title.LayoutOrder = 1
+	title.TextSize = 14
+	title.Text = tostring(opts.Title or "Notification")
+	title.LayoutOrder = 2
+	title.Parent = titleRow
 	local body = Instance.new("TextLabel")
 	body.BackgroundTransparency = 1
 	body.Size = UDim2.new(1, 0, 0, 0)
@@ -1710,143 +1731,273 @@ function UILIB:Load(name, img, direction)
 
 	local aiPanel
 	local function addBubble(list, text, isUser)
+		local row = Instance.new("Frame")
+		row.BackgroundTransparency = 1
+		row.BorderSizePixel = 0
+		row.Size = UDim2.new(1, 0, 0, 0)
+		row.AutomaticSize = Enum.AutomaticSize.Y
+		row.LayoutOrder = #list:GetChildren()
+		row.Parent = list
+
+		local rl = Instance.new("UIListLayout", row)
+		rl.FillDirection = Enum.FillDirection.Horizontal
+		rl.HorizontalAlignment = isUser and Enum.HorizontalAlignment.Right or Enum.HorizontalAlignment.Left
+		rl.VerticalAlignment = Enum.VerticalAlignment.Top
+		rl.Padding = UDim.new(0, 6)
+		rl.SortOrder = Enum.SortOrder.LayoutOrder
+
+		local avatar = Instance.new("Frame")
+		avatar.Size = UDim2.new(0, 22, 0, 22)
+		avatar.BackgroundColor3 = isUser and GlobalColor2 or Color3.fromRGB(60, 66, 86)
+		avatar.BorderSizePixel = 0
+		avatar.LayoutOrder = isUser and 2 or 1
+		avatar.Parent = row
+		local avc = Instance.new("UICorner", avatar)
+		avc.CornerRadius = UDim.new(1, 0)
+		local avIcon = Instance.new("ImageLabel")
+		avIcon.BackgroundTransparency = 1
+		avIcon.BorderSizePixel = 0
+		avIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+		avIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+		avIcon.Size = UDim2.new(0, 12, 0, 12)
+		avIcon.ImageColor3 = isUser and Color3.fromRGB(20, 24, 32) or Color3.fromRGB(230, 235, 245)
+		avIcon.Parent = avatar
+		applyIcon(avIcon, isUser and "user" or "sparkles")
+
 		local b = Instance.new("Frame")
-		b.BackgroundColor3 = isUser and GlobalColor2 or Color3.fromRGB(45, 49, 66)
-		b.BackgroundTransparency = isUser and 0.15 or 0
+		b.BackgroundColor3 = isUser and GlobalColor2 or Color3.fromRGB(38, 42, 58)
+		b.BackgroundTransparency = isUser and 0.1 or 0
 		b.BorderSizePixel = 0
-		b.Size = UDim2.new(0.82, 0, 0, 0)
 		b.AutomaticSize = Enum.AutomaticSize.Y
-		b.LayoutOrder = #list:GetChildren()
-		b.Parent = list
-		local hz = Instance.new("UIListLayout", b)
-		hz.HorizontalAlignment = isUser and Enum.HorizontalAlignment.Right or Enum.HorizontalAlignment.Left
-		corner(b, 0.15)
-		pad(b, 7)
+		b.Size = UDim2.new(0, 0, 0, 0)
+		b.LayoutOrder = isUser and 1 or 2
+		b.Parent = row
+		local bSC = Instance.new("UISizeConstraint", b)
+		bSC.MaxSize = Vector2.new(280, math.huge)
+		corner(b, 0.2)
+		pad(b, 8)
+
 		local t = Instance.new("TextLabel")
 		t.BackgroundTransparency = 1
-		t.Size = UDim2.new(1, 0, 0, 0)
-		t.AutomaticSize = Enum.AutomaticSize.Y
+		t.AutomaticSize = Enum.AutomaticSize.XY
+		t.Size = UDim2.new(0, 0, 0, 0)
 		t.FontFace = FONT
-		t.TextColor3 = isUser and Color3.fromRGB(20, 20, 20) or Color3.fromRGB(235, 238, 245)
+		t.TextColor3 = isUser and Color3.fromRGB(20, 24, 32) or Color3.fromRGB(230, 235, 245)
 		t.TextXAlignment = Enum.TextXAlignment.Left
 		t.TextYAlignment = Enum.TextYAlignment.Top
 		t.TextWrapped = true
-		t.TextSize = 14
+		t.TextSize = 13
 		t.Text = tostring(text)
 		t.Parent = b
-		return b
+		local tSC = Instance.new("UISizeConstraint", t)
+		tSC.MaxSize = Vector2.new(264, math.huge)
+
+		return row
 	end
 
 	local function buildAIPanel()
 		if aiPanel then return aiPanel end
 		aiPanel = Instance.new("Frame")
 		aiPanel.Name = "AIPanel"
-		aiPanel.BackgroundColor3 = Color3.fromRGB(26, 29, 41)
+		aiPanel.BackgroundColor3 = Color3.fromRGB(22, 25, 36)
 		aiPanel.BorderSizePixel = 0
-		aiPanel.Size = UDim2.new(0.32, 0, 0.44, 0)
-		aiPanel.Position = UDim2.new(0.34, 0, 0.28, 0)
+		aiPanel.Size = UDim2.new(0, 380, 0, 440)
+		aiPanel.Position = UDim2.new(0.5, -190, 0.5, -220)
 		aiPanel.Visible = false
 		aiPanel.ZIndex = 20
 		aiPanel.Parent = parent
-		corner(aiPanel, 0.04)
+		corner(aiPanel, 0.05)
 		local st = Instance.new("UIStroke", aiPanel)
-		st.Color = GlobalColor2
-		st.Thickness = 1.5
-		st.Transparency = 0.4
+		st.Color = Color3.fromRGB(60, 66, 86)
+		st.Thickness = 1
+		st.Transparency = 0.2
+
+		local shadow = Instance.new("ImageLabel")
+		shadow.BackgroundTransparency = 1
+		shadow.BorderSizePixel = 0
+		shadow.AnchorPoint = Vector2.new(0.5, 0.5)
+		shadow.Position = UDim2.new(0.5, 0, 0.5, 0)
+		shadow.Size = UDim2.new(1, 40, 1, 40)
+		shadow.Image = "rbxassetid://6014261993"
+		shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+		shadow.ImageTransparency = 0.5
+		shadow.ScaleType = Enum.ScaleType.Slice
+		shadow.SliceCenter = Rect.new(49, 49, 450, 450)
+		shadow.ZIndex = 19
+		shadow.Parent = aiPanel
+
 		local header = Instance.new("Frame")
-		header.BackgroundColor3 = Color3.fromRGB(32, 36, 51)
+		header.BackgroundColor3 = Color3.fromRGB(28, 31, 44)
 		header.BorderSizePixel = 0
-		header.Size = UDim2.new(1, 0, 0.14, 0)
+		header.Size = UDim2.new(1, 0, 0, 44)
 		header.ZIndex = 21
 		header.Parent = aiPanel
-		corner(header, 0.2)
+		corner(header, 0.14)
+		local hFix = Instance.new("Frame")
+		hFix.BackgroundColor3 = header.BackgroundColor3
+		hFix.BorderSizePixel = 0
+		hFix.Position = UDim2.new(0, 0, 1, -10)
+		hFix.Size = UDim2.new(1, 0, 0, 10)
+		hFix.ZIndex = 21
+		hFix.Parent = header
+
+		local headerLine = Instance.new("Frame")
+		headerLine.BackgroundColor3 = Color3.fromRGB(60, 66, 86)
+		headerLine.BorderSizePixel = 0
+		headerLine.Position = UDim2.new(0, 0, 1, 0)
+		headerLine.Size = UDim2.new(1, 0, 0, 1)
+		headerLine.ZIndex = 22
+		headerLine.Parent = header
+
+		local dot = Instance.new("Frame")
+		dot.BackgroundColor3 = GlobalColor2
+		dot.BorderSizePixel = 0
+		dot.AnchorPoint = Vector2.new(0, 0.5)
+		dot.Position = UDim2.new(0, 16, 0.5, 0)
+		dot.Size = UDim2.new(0, 28, 0, 28)
+		dot.ZIndex = 22
+		dot.Parent = header
+		local dc = Instance.new("UICorner", dot)
+		dc.CornerRadius = UDim.new(1, 0)
+		local dotIc = Instance.new("ImageLabel")
+		dotIc.BackgroundTransparency = 1
+		dotIc.AnchorPoint = Vector2.new(0.5, 0.5)
+		dotIc.Position = UDim2.new(0.5, 0, 0.5, 0)
+		dotIc.Size = UDim2.new(0, 16, 0, 16)
+		dotIc.ImageColor3 = Color3.fromRGB(20, 24, 32)
+		dotIc.ZIndex = 23
+		dotIc.Parent = dot
+		applyIcon(dotIc, "sparkles")
+
 		local ht = Instance.new("TextLabel")
 		ht.BackgroundTransparency = 1
-		ht.Size = UDim2.new(0.8, 0, 1, 0)
-		ht.Position = UDim2.new(0.04, 0, 0, 0)
+		ht.AnchorPoint = Vector2.new(0, 0.5)
+		ht.Position = UDim2.new(0, 54, 0.5, -6)
+		ht.Size = UDim2.new(0, 200, 0, 16)
 		ht.FontFace = FONT_BOLD
 		ht.TextColor3 = Color3.fromRGB(255, 255, 255)
 		ht.TextXAlignment = Enum.TextXAlignment.Left
-		ht.TextScaled = true
-		ht.Text = "🤖 AI Assistant"
+		ht.TextSize = 14
+		ht.Text = "AI Assistant"
 		ht.ZIndex = 22
 		ht.Parent = header
-		local hp = Instance.new("UIPadding", ht)
-		hp.PaddingTop = UDim.new(0.25, 0)
-		hp.PaddingBottom = UDim.new(0.25, 0)
-		local closeB = Instance.new("TextButton")
+
+		local status = Instance.new("TextLabel")
+		status.BackgroundTransparency = 1
+		status.AnchorPoint = Vector2.new(0, 0.5)
+		status.Position = UDim2.new(0, 54, 0.5, 8)
+		status.Size = UDim2.new(0, 200, 0, 12)
+		status.FontFace = FONT_ITALIC
+		status.TextColor3 = Color3.fromRGB(120, 200, 140)
+		status.TextXAlignment = Enum.TextXAlignment.Left
+		status.TextSize = 11
+		status.Text = "Online"
+		status.ZIndex = 22
+		status.Parent = header
+
+		local closeB = Instance.new("ImageButton")
 		closeB.BackgroundTransparency = 1
-		closeB.Size = UDim2.new(0.12, 0, 1, 0)
-		closeB.Position = UDim2.new(0.88, 0, 0, 0)
-		closeB.FontFace = FONT_BOLD
-		closeB.TextColor3 = Color3.fromRGB(255, 120, 120)
-		closeB.TextScaled = true
-		closeB.Text = "✕"
+		closeB.AnchorPoint = Vector2.new(1, 0.5)
+		closeB.Position = UDim2.new(1, -14, 0.5, 0)
+		closeB.Size = UDim2.new(0, 20, 0, 20)
+		closeB.ImageColor3 = Color3.fromRGB(200, 205, 220)
 		closeB.ZIndex = 22
 		closeB.Parent = header
-		local cbp = Instance.new("UIPadding", closeB)
-		cbp.PaddingTop = UDim.new(0.3, 0)
-		cbp.PaddingBottom = UDim.new(0.3, 0)
+		applyIcon(closeB, "x")
 		closeB.MouseButton1Click:Connect(function() aiPanel.Visible = false end)
+		closeB.MouseEnter:Connect(function() tween(closeB, 0.1, { ImageColor3 = Color3.fromRGB(255, 120, 120) }) end)
+		closeB.MouseLeave:Connect(function() tween(closeB, 0.1, { ImageColor3 = Color3.fromRGB(200, 205, 220) }) end)
 		makeDraggable(aiPanel, header)
+
 		local list = Instance.new("ScrollingFrame")
 		list.BackgroundTransparency = 1
 		list.BorderSizePixel = 0
-		list.Position = UDim2.new(0.03, 0, 0.16, 0)
-		list.Size = UDim2.new(0.94, 0, 0.66, 0)
+		list.Position = UDim2.new(0, 12, 0, 56)
+		list.Size = UDim2.new(1, -24, 1, -120)
 		list.CanvasSize = UDim2.new(0, 0, 0, 0)
 		list.AutomaticCanvasSize = Enum.AutomaticSize.Y
 		list.ScrollBarThickness = 3
-		list.ScrollBarImageColor3 = GlobalColor2
+		list.ScrollBarImageColor3 = Color3.fromRGB(90, 96, 116)
 		list.ZIndex = 21
 		list.Parent = aiPanel
 		local ll = Instance.new("UIListLayout", list)
-		ll.Padding = UDim.new(0, 6)
+		ll.Padding = UDim.new(0, 10)
 		ll.SortOrder = Enum.SortOrder.LayoutOrder
-		local inputRow = Instance.new("Frame")
-		inputRow.BackgroundColor3 = Color3.fromRGB(36, 40, 57)
-		inputRow.BorderSizePixel = 0
-		inputRow.Position = UDim2.new(0.03, 0, 0.84, 0)
-		inputRow.Size = UDim2.new(0.94, 0, 0.13, 0)
-		inputRow.ZIndex = 21
-		inputRow.Parent = aiPanel
-		corner(inputRow, 0.25)
+
+		local hint = Instance.new("TextLabel")
+		hint.BackgroundTransparency = 1
+		hint.Size = UDim2.new(1, 0, 0, 40)
+		hint.FontFace = FONT_ITALIC
+		hint.TextColor3 = Color3.fromRGB(130, 135, 150)
+		hint.TextXAlignment = Enum.TextXAlignment.Center
+		hint.TextYAlignment = Enum.TextYAlignment.Center
+		hint.TextSize = 11
+		hint.TextWrapped = true
+		hint.Text = "Send a message to start the conversation."
+		hint.ZIndex = 21
+		hint.Parent = list
+
+		local inputWrap = Instance.new("Frame")
+		inputWrap.BackgroundColor3 = Color3.fromRGB(32, 36, 52)
+		inputWrap.BorderSizePixel = 0
+		inputWrap.AnchorPoint = Vector2.new(0.5, 1)
+		inputWrap.Position = UDim2.new(0.5, 0, 1, -12)
+		inputWrap.Size = UDim2.new(1, -24, 0, 44)
+		inputWrap.ZIndex = 21
+		inputWrap.Parent = aiPanel
+		corner(inputWrap, 0.3)
+		local iwStroke = Instance.new("UIStroke", inputWrap)
+		iwStroke.Color = Color3.fromRGB(60, 66, 86)
+		iwStroke.Transparency = 0.4
+
 		local box = Instance.new("TextBox")
 		box.BackgroundTransparency = 1
-		box.Size = UDim2.new(0.78, 0, 1, 0)
-		box.Position = UDim2.new(0.03, 0, 0, 0)
+		box.AnchorPoint = Vector2.new(0, 0.5)
+		box.Position = UDim2.new(0, 14, 0.5, 0)
+		box.Size = UDim2.new(1, -60, 1, -8)
 		box.FontFace = FONT
 		box.TextColor3 = Color3.fromRGB(240, 240, 240)
-		box.PlaceholderColor3 = Color3.fromRGB(150, 150, 160)
+		box.PlaceholderColor3 = Color3.fromRGB(140, 145, 160)
 		box.PlaceholderText = "Ask anything..."
 		box.Text = ""
 		box.TextXAlignment = Enum.TextXAlignment.Left
-		box.TextScaled = true
+		box.TextSize = 13
 		box.ClearTextOnFocus = false
 		box.ZIndex = 22
-		box.Parent = inputRow
-		local send = Instance.new("TextButton")
+		box.Parent = inputWrap
+
+		local send = Instance.new("ImageButton")
 		send.BackgroundColor3 = GlobalColor2
-		send.Size = UDim2.new(0.17, 0, 0.78, 0)
-		send.Position = UDim2.new(0.81, 0, 0.11, 0)
-		send.FontFace = FONT_BOLD
-		send.TextColor3 = Color3.fromRGB(20, 20, 20)
-		send.TextScaled = true
-		send.Text = "➤"
+		send.AnchorPoint = Vector2.new(1, 0.5)
+		send.Position = UDim2.new(1, -6, 0.5, 0)
+		send.Size = UDim2.new(0, 32, 0, 32)
 		send.AutoButtonColor = false
 		send.ZIndex = 22
-		send.Parent = inputRow
-		corner(send, 0.3)
+		send.Parent = inputWrap
+		corner(send, 1)
+		local sendIc = Instance.new("ImageLabel")
+		sendIc.BackgroundTransparency = 1
+		sendIc.AnchorPoint = Vector2.new(0.5, 0.5)
+		sendIc.Position = UDim2.new(0.5, 0, 0.5, 0)
+		sendIc.Size = UDim2.new(0, 14, 0, 14)
+		sendIc.ImageColor3 = Color3.fromRGB(20, 24, 32)
+		sendIc.ZIndex = 23
+		sendIc.Parent = send
+		applyIcon(sendIc, "send")
+
 		local function doSend()
 			local prompt = box.Text
 			if prompt == nil or prompt:gsub("%s", "") == "" then return end
 			box.Text = ""
+			if hint and hint.Parent then hint:Destroy() end
 			addBubble(list, prompt, true)
-			local thinking = addBubble(list, "…", false)
+			local thinking = addBubble(list, "Thinking…", false)
 			task.spawn(function()
 				local ok, res = pcall(aiHandler, prompt)
 				if thinking and thinking.Parent then thinking:Destroy() end
 				addBubble(list, ok and tostring(res) or ("Error: " .. tostring(res)), false)
+				task.wait()
+				list.CanvasPosition = Vector2.new(0, list.AbsoluteCanvasSize.Y)
 			end)
 		end
 		send.MouseButton1Click:Connect(doSend)
@@ -1854,31 +2005,35 @@ function UILIB:Load(name, img, direction)
 		return aiPanel
 	end
 
-	local function makeTopButton(labelText, order, tip)
+	local function makeTopButton(iconName, order, nameHint)
 		local btn = parent.TopBar.ProfileMenu.Title:Clone()
-		btn.Name = "TB_" .. labelText
+		btn.Name = "TB_" .. (nameHint or tostring(iconName):gsub("[^%w]", "_"))
 		btn.LayoutOrder = order
-		btn.Size = UDim2.new(0.11, 0, 0.6824, 0)
+		btn.Size = UDim2.new(0.09, 0, 0.6824, 0)
 		btn.Parent = parent.TopBar.ProfileMenu
 		local lbl = btn:FindFirstChild("TextLabel")
-		if lbl then
-			lbl.Text = labelText
-			lbl.Position = UDim2.new(0, 0, 0.27, 0)
-			lbl.Size = UDim2.new(1, 0, 0.42, 0)
-			lbl.TextXAlignment = Enum.TextXAlignment.Center
-		end
+		if lbl then lbl:Destroy() end
+		local img = Instance.new("ImageLabel")
+		img.BackgroundTransparency = 1
+		img.BorderSizePixel = 0
+		img.AnchorPoint = Vector2.new(0.5, 0.5)
+		img.Position = UDim2.new(0.5, 0, 0.5, 0)
+		img.Size = UDim2.new(0.55, 0, 0.55, 0)
+		img.ImageColor3 = Color3.fromRGB(40, 45, 62)
+		img.Parent = btn
+		applyIcon(img, iconName)
 		return btn
 	end
 
-	local aiBtn = makeTopButton("🤖", 10)
+	local aiBtn = makeTopButton("rbxassetid://80451686744860", 10, "AI")
 	aiBtn.MouseButton1Click:Connect(function()
 		local p = buildAIPanel()
 		p.Visible = not p.Visible
 	end)
-	local dcBtn = makeTopButton("📋", 11)
+	local dcBtn = makeTopButton("rbxassetid://78979572434545", 11, "Discord")
 	dcBtn.MouseButton1Click:Connect(function()
 		pcall(clipboard, discordInvite)
-		doNotify({ Title = "Discord Copied", Content = discordInvite, Icon = "📋", Duration = 3 })
+		doNotify({ Title = "Discord Copied", Content = discordInvite, Icon = "rbxassetid://78979572434545", Duration = 3 })
 	end)
 
 	function self:SetAIHandler(fn) aiHandler = fn end
@@ -2008,38 +2163,35 @@ function UILIB:Load(name, img, direction)
 
 	function self:CreateSettingsTab(tabName)
 		local tab = UILIB.newTab(tabName or "Settings", "settings")
-		tab.newSection("⚙️ Configuration")
+		tab.newSection("Configuration")
 		tab.newParagraph("About", "Save and load your settings to a file. Enable Auto Save to persist changes automatically, or turn it off to save manually.")
 		tab.newInput("Config Name", "The file name used to save/load.", function(t)
 			if t and t:gsub("%s", "") ~= "" then Config.Name = t end
 		end)
 		tab.newButton("Save Config", "Write current settings to file.", function()
 			local ok, err = saveConfig(Config.Name)
-			doNotify({ Title = ok and "Saved" or "Save Failed", Content = ok and ("Saved '" .. Config.Name .. "'.") or tostring(err), Icon = ok and "💾" or "⚠️" })
-		end, "💾")
+			doNotify({ Title = ok and "Saved" or "Save Failed", Content = ok and ("Saved '" .. Config.Name .. "'.") or tostring(err), Icon = ok and "save" or "alert-triangle" })
+		end, "save")
 		tab.newButton("Load Config", "Load settings from file.", function()
 			local ok, err = loadConfig(Config.Name)
-			doNotify({ Title = ok and "Loaded" or "Load Failed", Content = ok and ("Loaded '" .. Config.Name .. "'.") or tostring(err), Icon = ok and "📂" or "⚠️" })
-		end, "📂")
+			doNotify({ Title = ok and "Loaded" or "Load Failed", Content = ok and ("Loaded '" .. Config.Name .. "'.") or tostring(err), Icon = ok and "folder-open" or "alert-triangle" })
+		end, "folder-open")
 		tab.newButton("Delete Config", "Delete the current config file.", function()
 			if fsOK() and typeof(delfile) == "function" and isfile(cfgPath(Config.Name)) then
 				pcall(delfile, cfgPath(Config.Name))
-				doNotify({ Title = "Deleted", Content = "Removed '" .. Config.Name .. "'.", Icon = "🗑️" })
+				doNotify({ Title = "Deleted", Content = "Removed '" .. Config.Name .. "'.", Icon = "trash-2" })
 			else
-				doNotify({ Title = "Nothing to Delete", Content = "No config named '" .. Config.Name .. "'.", Icon = "⚠️" })
+				doNotify({ Title = "Nothing to Delete", Content = "No config named '" .. Config.Name .. "'.", Icon = "alert-triangle" })
 			end
-		end, "🗑️")
+		end, "trash-2")
 		tab.newToggle("Auto Save", "Automatically save whenever a setting changes.", Config.AutoSave, function(state)
 			Config.AutoSave = state
 		end)
-		tab.newSection("🎨 Appearance")
+		tab.newSection("Appearance")
 		tab.newDropdown("Theme", "Pick from many color themes.", THEME_NAMES, function(sel)
 			local t = THEMES[sel]
 			if t then setTheme(t[1], t[2]) end
 		end, "SettingsTheme")
-		tab.newColorPicker("Accent Color", "Choose a custom accent color.", GlobalColor2, function(c)
-			setTheme(GlobalColor1, c)
-		end, "SettingsAccent")
 		return tab
 	end
 
@@ -2087,14 +2239,34 @@ function UILIB.newTab(name, img)
 		card.MouseLeave:Connect(function() tween(card, 0.2, { Transparency = 0.4 }) end)
 	end
 
-	function self.newButton(name, desc, func, emoji)
+	function self.newButton(name, desc, func, icon)
 		local newbtn = reserved.Button:Clone()
 		newbtn.Parent = newTab
-		newbtn.Title.Text = (emoji and (tostring(emoji) .. "  ") or "") .. tostring(name)
+		newbtn.Title.Text = tostring(name)
 		newbtn.Description.Text = desc or ""
 		newbtn.Visible = true
 		newbtn.Name = name
 		hoverCard(newbtn)
+		if icon then
+			local img = Instance.new("ImageLabel")
+			img.Name = "Icon"
+			img.BackgroundTransparency = 1
+			img.BorderSizePixel = 0
+			img.AnchorPoint = Vector2.new(0, 0.5)
+			img.Position = UDim2.new(0.02, 0, 0.5, 0)
+			img.Size = UDim2.new(0, 22, 0, 22)
+			img.ImageColor3 = GlobalColor2
+			img.ZIndex = 2
+			img.Parent = newbtn
+			if applyIcon(img, icon) then
+				local titleP = Instance.new("UIPadding", newbtn.Title)
+				titleP.PaddingLeft = UDim.new(0, 30)
+				local descP = Instance.new("UIPadding", newbtn.Description)
+				descP.PaddingLeft = UDim.new(0, 30)
+			else
+				img:Destroy()
+			end
+		end
 		newbtn.MouseButton1Click:Connect(function()
 			tween(newbtn, 0.08, { Transparency = 0.1 })
 			task.wait(0.08)
@@ -2137,20 +2309,20 @@ function UILIB.newTab(name, img)
 		corner(f, 0.06)
 		hoverCard(f)
 		local list = Instance.new("UIListLayout", f)
-		list.Padding = UDim.new(0, 4)
+		list.Padding = UDim.new(0, 2)
 		list.SortOrder = Enum.SortOrder.LayoutOrder
 		local p = Instance.new("UIPadding", f)
-		p.PaddingLeft = UDim.new(0.02, 0)
-		p.PaddingRight = UDim.new(0.02, 0)
-		p.PaddingTop = UDim.new(0, 8)
-		p.PaddingBottom = UDim.new(0, 8)
+		p.PaddingLeft = UDim.new(0.018, 0)
+		p.PaddingRight = UDim.new(0.018, 0)
+		p.PaddingTop = UDim.new(0, 6)
+		p.PaddingBottom = UDim.new(0, 6)
 		local t = Instance.new("TextLabel")
 		t.BackgroundTransparency = 1
-		t.Size = UDim2.new(1, 0, 0, 18)
+		t.Size = UDim2.new(1, 0, 0, 14)
 		t.FontFace = FONT_BOLD
 		t.TextColor3 = Color3.fromRGB(255, 255, 255)
 		t.TextXAlignment = Enum.TextXAlignment.Left
-		t.TextSize = 16
+		t.TextSize = 13
 		t.Text = tostring(title)
 		t.LayoutOrder = 1
 		t.Parent = f
@@ -2158,12 +2330,12 @@ function UILIB.newTab(name, img)
 		c.BackgroundTransparency = 1
 		c.Size = UDim2.new(1, 0, 0, 0)
 		c.AutomaticSize = Enum.AutomaticSize.Y
-		c.FontFace = FONT
-		c.TextColor3 = Color3.fromRGB(205, 210, 225)
+		c.FontFace = FONT_ITALIC
+		c.TextColor3 = Color3.fromRGB(190, 195, 210)
 		c.TextXAlignment = Enum.TextXAlignment.Left
 		c.TextYAlignment = Enum.TextYAlignment.Top
 		c.TextWrapped = true
-		c.TextSize = 14
+		c.TextSize = 11
 		c.Text = tostring(content or "")
 		c.LayoutOrder = 2
 		c.Parent = f
@@ -2324,144 +2496,291 @@ function UILIB.newTab(name, img)
 		else
 			flag = extra
 		end
-		local newdd = reserved.Dropdown:Clone()
-		newdd.Visible = true
-		newdd.Parent = newTab
-		newdd.Name = name
-		newdd.Title.Text = name
-		newdd.Description.Text = desc or ""
-		newdd.DropdownBar.Icon.Rotation = 180
+
+		local card = Instance.new("Frame")
+		card.Name = name
+		card.BackgroundColor3 = Color3.fromRGB(40, 45, 62)
+		card.BackgroundTransparency = 0.4
+		card.BorderSizePixel = 0
+		card.Size = UDim2.new(0.9614, 0, 0, 62)
+		card.AutomaticSize = Enum.AutomaticSize.Y
+		card.ClipsDescendants = false
+		card.Parent = newTab
+		corner(card, 0.14)
+		hoverCard(card)
+
+		local cardPad = Instance.new("UIPadding", card)
+		cardPad.PaddingLeft = UDim.new(0, 12)
+		cardPad.PaddingRight = UDim.new(0, 12)
+		cardPad.PaddingTop = UDim.new(0, 10)
+		cardPad.PaddingBottom = UDim.new(0, 10)
+
+		local cardList = Instance.new("UIListLayout", card)
+		cardList.Padding = UDim.new(0, 6)
+		cardList.SortOrder = Enum.SortOrder.LayoutOrder
+
+		local header = Instance.new("Frame")
+		header.BackgroundTransparency = 1
+		header.Size = UDim2.new(1, 0, 0, 30)
+		header.LayoutOrder = 1
+		header.Parent = card
+
+		local titleL = Instance.new("TextLabel")
+		titleL.BackgroundTransparency = 1
+		titleL.Size = UDim2.new(0.55, 0, 0, 14)
+		titleL.FontFace = FONT_BOLD
+		titleL.TextColor3 = Color3.fromRGB(255, 255, 255)
+		titleL.TextXAlignment = Enum.TextXAlignment.Left
+		titleL.TextSize = 13
+		titleL.Text = tostring(name)
+		titleL.Parent = header
+
+		local descL = Instance.new("TextLabel")
+		descL.BackgroundTransparency = 1
+		descL.Position = UDim2.new(0, 0, 0, 16)
+		descL.Size = UDim2.new(0.55, 0, 0, 12)
+		descL.FontFace = FONT_ITALIC
+		descL.TextColor3 = Color3.fromRGB(190, 195, 210)
+		descL.TextXAlignment = Enum.TextXAlignment.Left
+		descL.TextSize = 11
+		descL.Text = tostring(desc or "")
+		descL.Parent = header
+
+		local pill = Instance.new("TextButton")
+		pill.AnchorPoint = Vector2.new(1, 0.5)
+		pill.Position = UDim2.new(1, 0, 0.5, 0)
+		pill.Size = UDim2.new(0.4, 0, 0, 28)
+		pill.BackgroundColor3 = Color3.fromRGB(30, 34, 48)
+		pill.BorderSizePixel = 0
+		pill.AutoButtonColor = false
+		pill.FontFace = FONT
+		pill.TextColor3 = Color3.fromRGB(235, 235, 245)
+		pill.TextXAlignment = Enum.TextXAlignment.Left
+		pill.TextSize = 12
+		pill.Text = " none"
+		pill.Parent = header
+		corner(pill, 0.25)
+		local pillStroke = Instance.new("UIStroke", pill)
+		pillStroke.Color = Color3.fromRGB(70, 76, 96)
+		pillStroke.Transparency = 0.2
+		pillStroke.Thickness = 1
+		local pillPad = Instance.new("UIPadding", pill)
+		pillPad.PaddingLeft = UDim.new(0, 10)
+		pillPad.PaddingRight = UDim.new(0, 26)
+
+		local chev = Instance.new("ImageLabel")
+		chev.BackgroundTransparency = 1
+		chev.BorderSizePixel = 0
+		chev.AnchorPoint = Vector2.new(1, 0.5)
+		chev.Position = UDim2.new(1, -8, 0.5, 0)
+		chev.Size = UDim2.new(0, 12, 0, 12)
+		chev.ImageColor3 = Color3.fromRGB(190, 195, 210)
+		chev.Rotation = 0
+		chev.Parent = pill
+		if not applyIcon(chev, "chevron-down") then
+			chev.Image = "rbxassetid://14122651741"
+		end
+
+		local body = Instance.new("Frame")
+		body.BackgroundColor3 = Color3.fromRGB(24, 27, 40)
+		body.BorderSizePixel = 0
+		body.Size = UDim2.new(1, 0, 0, 0)
+		body.Visible = false
+		body.ClipsDescendants = true
+		body.LayoutOrder = 2
+		body.Parent = card
+		corner(body, 0.1)
+		local bodyStroke = Instance.new("UIStroke", body)
+		bodyStroke.Color = Color3.fromRGB(70, 76, 96)
+		bodyStroke.Transparency = 0.3
+		bodyStroke.Thickness = 1
+
+		local bodyPad = Instance.new("UIPadding", body)
+		bodyPad.PaddingLeft = UDim.new(0, 6)
+		bodyPad.PaddingRight = UDim.new(0, 6)
+		bodyPad.PaddingTop = UDim.new(0, 6)
+		bodyPad.PaddingBottom = UDim.new(0, 6)
+
+		local search = Instance.new("TextBox")
+		search.BackgroundColor3 = Color3.fromRGB(32, 36, 52)
+		search.BorderSizePixel = 0
+		search.Size = UDim2.new(1, 0, 0, 24)
+		search.FontFace = FONT
+		search.TextColor3 = Color3.fromRGB(235, 235, 245)
+		search.PlaceholderColor3 = Color3.fromRGB(140, 145, 160)
+		search.PlaceholderText = "Search..."
+		search.Text = ""
+		search.TextSize = 12
+		search.TextXAlignment = Enum.TextXAlignment.Left
+		search.ClearTextOnFocus = false
+		search.Parent = body
+		corner(search, 0.3)
+		local searchPad = Instance.new("UIPadding", search)
+		searchPad.PaddingLeft = UDim.new(0, 8)
+		searchPad.PaddingRight = UDim.new(0, 8)
+
+		local scroll = Instance.new("ScrollingFrame")
+		scroll.BackgroundTransparency = 1
+		scroll.BorderSizePixel = 0
+		scroll.Position = UDim2.new(0, 0, 0, 30)
+		scroll.Size = UDim2.new(1, 0, 1, -30)
+		scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+		scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+		scroll.ScrollBarThickness = 3
+		scroll.ScrollBarImageColor3 = GlobalColor2
+		scroll.Parent = body
+		local scrollList = Instance.new("UIListLayout", scroll)
+		scrollList.Padding = UDim.new(0, 3)
+		scrollList.SortOrder = Enum.SortOrder.LayoutOrder
 
 		local selected = multi and {} or nil
 		local buttons = {}
-
-		local search = Instance.new("TextBox")
-		search.BackgroundColor3 = Color3.fromRGB(30, 34, 48)
-		search.BorderSizePixel = 0
-		search.Size = UDim2.new(0.96, 0, 0, 26)
-		search.FontFace = FONT
-		search.TextColor3 = Color3.fromRGB(235, 235, 245)
-		search.PlaceholderColor3 = Color3.fromRGB(150, 150, 160)
-		search.PlaceholderText = "🔍 Search..."
-		search.Text = ""
-		search.TextSize = 14
-		search.ClearTextOnFocus = false
-		search.LayoutOrder = 0
-		search.Parent = newdd.Box.ScrollingFrame
-		corner(search, 0.25)
-		local sp = Instance.new("UIPadding", search)
-		sp.PaddingLeft = UDim.new(0, 8)
 
 		local function refreshText()
 			if multi then
 				local names = {}
 				for k in pairs(selected) do table.insert(names, k) end
 				table.sort(names)
-				newdd.DropdownBar.Open.Text = #names > 0 and table.concat(names, ", ") or "none"
+				pill.Text = #names > 0 and (" " .. table.concat(names, ", ")) or " none"
 			end
 		end
 
-		for i, list in ipairs(listTable) do
-			local btn = reserved.DropdownButton:Clone()
-			btn.Visible = true
-			btn.Parent = newdd.Box.ScrollingFrame
-			btn.Name = tostring(list)
-			btn.name.Text = tostring(list)
-			btn.LayoutOrder = i
-			btn.AutoButtonColor = false
-			local st = btn:FindFirstChildOfClass("UIStroke")
-			buttons[tostring(list)] = btn
-			local function setHighlight(on)
-				btn.name.TextColor3 = on and GlobalColor2 or Color3.fromRGB(160, 160, 160)
-				if st then tween(st, 0.15, { Transparency = on and 0 or 1 }) end
+		local function makeItem(i, list)
+			local key = tostring(list)
+			local item = Instance.new("TextButton")
+			item.BackgroundColor3 = Color3.fromRGB(32, 36, 52)
+			item.BackgroundTransparency = 1
+			item.BorderSizePixel = 0
+			item.Size = UDim2.new(1, 0, 0, 26)
+			item.FontFace = FONT
+			item.TextColor3 = Color3.fromRGB(200, 205, 220)
+			item.TextXAlignment = Enum.TextXAlignment.Left
+			item.TextSize = 12
+			item.Text = "  " .. key
+			item.AutoButtonColor = false
+			item.LayoutOrder = i
+			item.Parent = scroll
+			corner(item, 0.3)
+
+			local check = Instance.new("ImageLabel")
+			check.BackgroundTransparency = 1
+			check.BorderSizePixel = 0
+			check.AnchorPoint = Vector2.new(1, 0.5)
+			check.Position = UDim2.new(1, -8, 0.5, 0)
+			check.Size = UDim2.new(0, 12, 0, 12)
+			check.ImageColor3 = GlobalColor2
+			check.ImageTransparency = 1
+			check.Parent = item
+			applyIcon(check, "check")
+
+			buttons[key] = { Frame = item, Check = check }
+
+			local function setState(on)
+				check.ImageTransparency = on and 0 or 1
+				item.TextColor3 = on and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(200, 205, 220)
+				tween(item, 0.15, { BackgroundTransparency = on and 0.5 or 1 })
 			end
-			if st then st.Transparency = 1 end
-			btn.MouseEnter:Connect(function() if st then tween(st, 0.15, { Transparency = 0.4 }) end end)
-			btn.MouseLeave:Connect(function()
-				local on = multi and selected[tostring(list)] or false
-				if st then tween(st, 0.15, { Transparency = on and 0 or 1 }) end
+
+			item.MouseEnter:Connect(function()
+				local on = multi and selected[key] or (not multi and pill.Text:sub(2) == key)
+				if not on then tween(item, 0.12, { BackgroundTransparency = 0.7 }) end
 			end)
-			btn.MouseButton1Click:Connect(function()
+			item.MouseLeave:Connect(function()
+				local on = multi and selected[key] or (not multi and pill.Text:sub(2) == key)
+				tween(item, 0.12, { BackgroundTransparency = on and 0.5 or 1 })
+			end)
+
+			item.MouseButton1Click:Connect(function()
 				if multi then
-					if selected[tostring(list)] then selected[tostring(list)] = nil setHighlight(false) else selected[tostring(list)] = true setHighlight(true) end
+					if selected[key] then selected[key] = nil setState(false) else selected[key] = true setState(true) end
 					refreshText()
 					if func then pcall(func, selected) end
 					onChanged()
 				else
-					newdd.DropdownBar.Open.Text = tostring(list)
-					for k, b in pairs(buttons) do b.name.TextColor3 = Color3.fromRGB(160, 160, 160) end
-					setHighlight(true)
-					tween(newdd.Box, 0.15, { Size = UDim2.new(0.97, 0, 0, 0) })
-					tween(newdd.DropdownBar.Icon, 0.2, { Rotation = 180 })
-					task.wait(0.15)
-					newdd.Box.Visible = false
+					for k, b in pairs(buttons) do
+						b.Check.ImageTransparency = 1
+						b.Frame.TextColor3 = Color3.fromRGB(200, 205, 220)
+						tween(b.Frame, 0.1, { BackgroundTransparency = 1 })
+					end
+					setState(true)
+					pill.Text = " " .. key
+					task.wait(0.05)
+					closeBox()
 					if func then pcall(func, list) end
 					onChanged()
 				end
 			end)
 		end
 
+		local openBox, closeBox
+		local isOpen = false
+		openBox = function()
+			if isOpen then return end
+			isOpen = true
+			body.Visible = true
+			body.Size = UDim2.new(1, 0, 0, 0)
+			tween(body, 0.18, { Size = UDim2.new(1, 0, 0, 180) })
+			tween(chev, 0.18, { Rotation = 180 })
+		end
+		closeBox = function()
+			if not isOpen then return end
+			isOpen = false
+			tween(body, 0.15, { Size = UDim2.new(1, 0, 0, 0) })
+			tween(chev, 0.18, { Rotation = 0 })
+			task.wait(0.15)
+			if not isOpen then body.Visible = false end
+		end
+
+		pill.MouseButton1Click:Connect(function()
+			if isOpen then closeBox() else openBox() end
+		end)
+
 		search:GetPropertyChangedSignal("Text"):Connect(function()
 			local q = search.Text:lower()
 			for nm, b in pairs(buttons) do
-				b.Visible = q == "" or nm:lower():find(q, 1, true) ~= nil
+				b.Frame.Visible = q == "" or nm:lower():find(q, 1, true) ~= nil
 			end
 		end)
 
-		local function openBox()
-			newdd.Box.Visible = true
-			tween(newdd.Box, 0.15, { Size = UDim2.new(0.97, 0, 1.9, 0) })
-			tween(newdd.DropdownBar.Icon, 0.2, { Rotation = 0 })
-		end
-		local function closeBox()
-			tween(newdd.Box, 0.15, { Size = UDim2.new(0.97, 0, 0, 0) })
-			tween(newdd.DropdownBar.Icon, 0.2, { Rotation = 180 })
-			task.wait(0.15)
-			newdd.Box.Visible = false
-		end
-		newdd.DropdownBar.Trigger.MouseButton1Click:Connect(function()
-			if newdd.Box.Visible then closeBox() else openBox() end
-		end)
+		for i, list in ipairs(listTable) do makeItem(i, list) end
 
 		registerFlag(flag, function()
-			if multi then local t = {} for k in pairs(selected) do table.insert(t, k) end return t else return newdd.DropdownBar.Open.Text end
+			if multi then local t = {} for k in pairs(selected) do table.insert(t, k) end return t else return pill.Text:sub(2) end
 		end, function(v)
 			if multi and type(v) == "table" then
 				selected = {}
 				for _, k in ipairs(v) do selected[tostring(k)] = true end
-				for nm, b in pairs(buttons) do b.name.TextColor3 = selected[nm] and GlobalColor2 or Color3.fromRGB(160, 160, 160) end
+				for nm, b in pairs(buttons) do
+					local on = selected[nm] and true or false
+					b.Check.ImageTransparency = on and 0 or 1
+					b.Frame.BackgroundTransparency = on and 0.5 or 1
+				end
 				refreshText()
 				if func then pcall(func, selected) end
 			elseif not multi then
-				local b = buttons[tostring(v)]
+				local key = tostring(v)
+				local b = buttons[key]
 				if b then
-					newdd.DropdownBar.Open.Text = tostring(v)
-					b.name.TextColor3 = GlobalColor2
+					for nm, bb in pairs(buttons) do
+						bb.Check.ImageTransparency = 1
+						bb.Frame.BackgroundTransparency = 1
+					end
+					b.Check.ImageTransparency = 0
+					b.Frame.BackgroundTransparency = 0.5
+					pill.Text = " " .. key
 					if func then pcall(func, v) end
 				end
 			end
 		end)
 
 		return {
-			Frame = newdd,
+			Frame = card,
 			Refresh = function(_, newList)
-				for _, b in pairs(buttons) do b:Destroy() end
+				for _, b in pairs(buttons) do b.Frame:Destroy() end
 				buttons = {}
-				for i, list in ipairs(newList) do
-					local btn = reserved.DropdownButton:Clone()
-					btn.Visible = true
-					btn.Parent = newdd.Box.ScrollingFrame
-					btn.Name = tostring(list)
-					btn.name.Text = tostring(list)
-					btn.LayoutOrder = i
-					buttons[tostring(list)] = btn
-					btn.MouseButton1Click:Connect(function()
-						newdd.DropdownBar.Open.Text = tostring(list)
-						closeBox()
-						if func then pcall(func, list) end
-						onChanged()
-					end)
-				end
+				selected = multi and {} or nil
+				pill.Text = " none"
+				for i, list in ipairs(newList) do makeItem(i, list) end
 			end,
 		}
 	end
