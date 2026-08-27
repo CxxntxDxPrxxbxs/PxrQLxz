@@ -1383,6 +1383,28 @@ local function near(a, b)
 	return (math.abs(a.R-b.R) + math.abs(a.G-b.G) + math.abs(a.B-b.B)) < 0.06
 end
 
+local function shade(c, delta)
+	return Color3.fromRGB(
+		math.clamp(c.R * 255 + delta, 0, 255),
+		math.clamp(c.G * 255 + delta, 0, 255),
+		math.clamp(c.B * 255 + delta, 0, 255)
+	)
+end
+
+local SurfaceBound = {}
+local function bindSurface(inst, prop, delta)
+	table.insert(SurfaceBound, { inst, prop, delta })
+	pcall(function() inst[prop] = shade(GlobalColor1, delta) end)
+	return inst
+end
+
+local AccentBound = {}
+local function bindAccent(inst, prop)
+	table.insert(AccentBound, { inst, prop })
+	pcall(function() inst[prop] = GlobalColor2 end)
+	return inst
+end
+
 local function setTheme(main, color2)
 	local oldMain, oldAccent = GlobalColor1, GlobalColor2
 	local mainRefs = { oldMain, Color3.fromRGB(40,45,62), Color3.fromRGB(39,44,61), Color3.fromRGB(42,42,58) }
@@ -1411,6 +1433,24 @@ local function setTheme(main, color2)
 	end
 	for _, v in ipairs(parent:GetDescendants()) do apply(v) end
 	GlobalColor1, GlobalColor2 = main, color2
+	for i = #SurfaceBound, 1, -1 do
+		local e = SurfaceBound[i]
+		local inst, prop, delta = e[1], e[2], e[3]
+		if inst and inst.Parent then
+			pcall(function() inst[prop] = shade(main, delta) end)
+		else
+			table.remove(SurfaceBound, i)
+		end
+	end
+	for i = #AccentBound, 1, -1 do
+		local e = AccentBound[i]
+		local inst, prop = e[1], e[2]
+		if inst and inst.Parent then
+			pcall(function() inst[prop] = color2 end)
+		else
+			table.remove(AccentBound, i)
+		end
+	end
 end
 
 local Flags = {}
@@ -1552,15 +1592,15 @@ local function doNotify(opts)
 	opts = opts or {}
 	local holder = ensureNotif()
 	local card = Instance.new("Frame")
-	card.BackgroundColor3 = Color3.fromRGB(28, 31, 44)
 	card.BackgroundTransparency = 0.05
 	card.BorderSizePixel = 0
 	card.Size = UDim2.new(1, 0, 0, 0)
 	card.AutomaticSize = Enum.AutomaticSize.Y
 	card.Parent = holder
+	bindSurface(card, "BackgroundColor3", -15)
 	corner(card, 0.12)
 	local st = Instance.new("UIStroke", card)
-	st.Color = GlobalColor2
+	bindAccent(st, "Color")
 	st.Thickness = 1.5
 	st.Transparency = 0.3
 	pad(card, 8)
@@ -1596,7 +1636,7 @@ local function doNotify(opts)
 	title.FontFace = FONT_BOLD
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.TextSize = 14
+	title.TextSize = 13
 	title.Text = tostring(opts.Title or "Notification")
 	title.LayoutOrder = 2
 	title.Parent = titleRow
@@ -1609,7 +1649,7 @@ local function doNotify(opts)
 	body.TextXAlignment = Enum.TextXAlignment.Left
 	body.TextYAlignment = Enum.TextYAlignment.Top
 	body.TextWrapped = true
-	body.TextSize = 13
+	body.TextSize = 12
 	body.Text = tostring(opts.Content or "")
 	body.Parent = card
 	body.LayoutOrder = 2
@@ -1794,10 +1834,10 @@ function UILIB:Load(name, img, direction)
 
 		local avatar = Instance.new("Frame")
 		avatar.Size = UDim2.new(0, 22, 0, 22)
-		avatar.BackgroundColor3 = isUser and GlobalColor2 or Color3.fromRGB(60, 66, 86)
 		avatar.BorderSizePixel = 0
 		avatar.LayoutOrder = isUser and 2 or 1
 		avatar.Parent = row
+		if isUser then bindAccent(avatar, "BackgroundColor3") else bindSurface(avatar, "BackgroundColor3", 22) end
 		local avc = Instance.new("UICorner", avatar)
 		avc.CornerRadius = UDim.new(1, 0)
 		local avIcon = Instance.new("ImageLabel")
@@ -1811,13 +1851,13 @@ function UILIB:Load(name, img, direction)
 		applyIcon(avIcon, isUser and "user" or "sparkles")
 
 		local b = Instance.new("Frame")
-		b.BackgroundColor3 = isUser and GlobalColor2 or Color3.fromRGB(38, 42, 58)
 		b.BackgroundTransparency = isUser and 0.1 or 0
 		b.BorderSizePixel = 0
 		b.AutomaticSize = Enum.AutomaticSize.Y
 		b.Size = UDim2.new(0.78, -30, 0, 0)
 		b.LayoutOrder = isUser and 1 or 2
 		b.Parent = row
+		if isUser then bindAccent(b, "BackgroundColor3") else bindSurface(b, "BackgroundColor3", -3) end
 		corner(b, 0.2)
 		pad(b, 8)
 
@@ -1830,7 +1870,7 @@ function UILIB:Load(name, img, direction)
 		t.TextXAlignment = Enum.TextXAlignment.Left
 		t.TextYAlignment = Enum.TextYAlignment.Top
 		t.TextWrapped = true
-		t.TextSize = 13
+		t.TextSize = 12
 		t.Text = tostring(text)
 		t.Parent = b
 
@@ -1841,16 +1881,20 @@ function UILIB:Load(name, img, direction)
 		if aiPanel then return aiPanel end
 		aiPanel = Instance.new("Frame")
 		aiPanel.Name = "AIPanel"
-		aiPanel.BackgroundColor3 = Color3.fromRGB(22, 25, 36)
 		aiPanel.BorderSizePixel = 0
-		aiPanel.Size = UDim2.new(0, 380, 0, 440)
-		aiPanel.Position = UDim2.new(0.5, -190, 0.5, -220)
+		aiPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+		aiPanel.Size = parent.MainBar.Size
+		aiPanel.Position = UDim2.new(0.5, 0, 0.5, 0)
 		aiPanel.Visible = false
 		aiPanel.ZIndex = 20
 		aiPanel.Parent = parent
+		bindSurface(aiPanel, "BackgroundColor3", -21)
+		parent.MainBar:GetPropertyChangedSignal("Size"):Connect(function()
+			aiPanel.Size = parent.MainBar.Size
+		end)
 		corner(aiPanel, 0.05)
 		local st = Instance.new("UIStroke", aiPanel)
-		st.Color = Color3.fromRGB(60, 66, 86)
+		bindSurface(st, "Color", 22)
 		st.Thickness = 1
 		st.Transparency = 0.2
 
@@ -1869,27 +1913,27 @@ function UILIB:Load(name, img, direction)
 		shadow.Parent = aiPanel
 
 		local header = Instance.new("Frame")
-		header.BackgroundColor3 = Color3.fromRGB(28, 31, 44)
 		header.BorderSizePixel = 0
 		header.Size = UDim2.new(1, 0, 0, 44)
 		header.ZIndex = 21
 		header.Parent = aiPanel
+		bindSurface(header, "BackgroundColor3", -15)
 		corner(header, 0.14)
 		local hFix = Instance.new("Frame")
-		hFix.BackgroundColor3 = header.BackgroundColor3
 		hFix.BorderSizePixel = 0
 		hFix.Position = UDim2.new(0, 0, 1, -10)
 		hFix.Size = UDim2.new(1, 0, 0, 10)
 		hFix.ZIndex = 21
 		hFix.Parent = header
+		bindSurface(hFix, "BackgroundColor3", -15)
 
 		local headerLine = Instance.new("Frame")
-		headerLine.BackgroundColor3 = Color3.fromRGB(60, 66, 86)
 		headerLine.BorderSizePixel = 0
 		headerLine.Position = UDim2.new(0, 0, 1, 0)
 		headerLine.Size = UDim2.new(1, 0, 0, 1)
 		headerLine.ZIndex = 22
 		headerLine.Parent = header
+		bindSurface(headerLine, "BackgroundColor3", 22)
 
 		local dot = Instance.new("Frame")
 		dot.BackgroundColor3 = GlobalColor2
@@ -1919,7 +1963,7 @@ function UILIB:Load(name, img, direction)
 		ht.FontFace = FONT_BOLD
 		ht.TextColor3 = Color3.fromRGB(255, 255, 255)
 		ht.TextXAlignment = Enum.TextXAlignment.Left
-		ht.TextSize = 14
+		ht.TextSize = 13
 		ht.Text = "AI Assistant"
 		ht.ZIndex = 22
 		ht.Parent = header
@@ -1932,7 +1976,7 @@ function UILIB:Load(name, img, direction)
 		status.FontFace = FONT_ITALIC
 		status.TextColor3 = Color3.fromRGB(120, 200, 140)
 		status.TextXAlignment = Enum.TextXAlignment.Left
-		status.TextSize = 11
+		status.TextSize = 10
 		status.Text = "Online"
 		status.ZIndex = 22
 		status.Parent = header
@@ -1973,23 +2017,23 @@ function UILIB:Load(name, img, direction)
 		hint.TextColor3 = Color3.fromRGB(130, 135, 150)
 		hint.TextXAlignment = Enum.TextXAlignment.Center
 		hint.TextYAlignment = Enum.TextYAlignment.Center
-		hint.TextSize = 11
+		hint.TextSize = 10
 		hint.TextWrapped = true
 		hint.Text = "Send a message to start the conversation."
 		hint.ZIndex = 21
 		hint.Parent = list
 
 		local inputWrap = Instance.new("Frame")
-		inputWrap.BackgroundColor3 = Color3.fromRGB(32, 36, 52)
 		inputWrap.BorderSizePixel = 0
 		inputWrap.AnchorPoint = Vector2.new(0.5, 1)
 		inputWrap.Position = UDim2.new(0.5, 0, 1, -12)
 		inputWrap.Size = UDim2.new(1, -24, 0, 44)
 		inputWrap.ZIndex = 21
 		inputWrap.Parent = aiPanel
+		bindSurface(inputWrap, "BackgroundColor3", -9)
 		corner(inputWrap, 0.3)
 		local iwStroke = Instance.new("UIStroke", inputWrap)
-		iwStroke.Color = Color3.fromRGB(60, 66, 86)
+		bindSurface(iwStroke, "Color", 22)
 		iwStroke.Transparency = 0.4
 
 		local box = Instance.new("TextBox")
@@ -2003,7 +2047,7 @@ function UILIB:Load(name, img, direction)
 		box.PlaceholderText = "Ask anything..."
 		box.Text = ""
 		box.TextXAlignment = Enum.TextXAlignment.Left
-		box.TextSize = 13
+		box.TextSize = 12
 		box.ClearTextOnFocus = false
 		box.ZIndex = 22
 		box.Parent = inputWrap
@@ -2289,8 +2333,8 @@ function UILIB.newTab(name, img)
 		newbtn.Visible = true
 		newbtn.Name = name
 		hoverCard(newbtn)
-		capLabel(newbtn.Title, 20, 13)
-		capLabel(newbtn.Description, 15, 10)
+		capLabel(newbtn.Title, 16, 11)
+		capLabel(newbtn.Description, 12, 9)
 		if icon then
 			local img = Instance.new("ImageLabel")
 			img.Name = "Icon"
@@ -2335,7 +2379,7 @@ function UILIB.newTab(name, img)
 		t.TextScaled = true
 		t.Text = tostring(text)
 		t.Parent = f
-		capLabel(t, 18, 12)
+		capLabel(t, 15, 10)
 		local p = Instance.new("UIPadding", t)
 		p.PaddingTop = UDim.new(0.2, 0)
 		p.PaddingBottom = UDim.new(0.2, 0)
@@ -2363,11 +2407,11 @@ function UILIB.newTab(name, img)
 		p.PaddingBottom = UDim.new(0, 9)
 		local t = Instance.new("TextLabel")
 		t.BackgroundTransparency = 1
-		t.Size = UDim2.new(1, 0, 0, IS_MOBILE and 15 or 18)
+		t.Size = UDim2.new(1, 0, 0, IS_MOBILE and 13 or 15)
 		t.FontFace = FONT_BOLD
 		t.TextColor3 = Color3.fromRGB(255, 255, 255)
 		t.TextXAlignment = Enum.TextXAlignment.Left
-		t.TextSize = IS_MOBILE and 13 or 16
+		t.TextSize = IS_MOBILE and 11 or 13
 		t.Text = tostring(title)
 		t.LayoutOrder = 1
 		t.Parent = f
@@ -2380,7 +2424,7 @@ function UILIB.newTab(name, img)
 		c.TextXAlignment = Enum.TextXAlignment.Left
 		c.TextYAlignment = Enum.TextYAlignment.Top
 		c.TextWrapped = true
-		c.TextSize = IS_MOBILE and 11 or 13
+		c.TextSize = IS_MOBILE and 10 or 11
 		c.Text = tostring(content or "")
 		c.LayoutOrder = 2
 		c.Parent = f
@@ -2409,9 +2453,9 @@ function UILIB.newTab(name, img)
 		newInput.Title.Text = name
 		newInput.Description.Text = desc or ""
 		newInput.Name = name
-		capLabel(newInput.Title, 18, 12)
-		capLabel(newInput.Description, 14, 10)
-		capLabel(textbox, 14, 10)
+		capLabel(newInput.Title, 15, 10)
+		capLabel(newInput.Description, 12, 9)
+		capLabel(textbox, 12, 9)
 		textbox.FocusLost:Connect(function()
 			if func then pcall(func, textbox.Text) end
 			onChanged()
@@ -2431,9 +2475,9 @@ function UILIB.newTab(name, img)
 		newKey.Name = name
 		newKey.Description.Text = desc or ""
 		newKey.Visible = true
-		capLabel(newKey.Title, 18, 12)
-		capLabel(newKey.Description, 14, 10)
-		capLabel(newKey.Bind.Button, 13, 9)
+		capLabel(newKey.Title, 15, 10)
+		capLabel(newKey.Description, 12, 9)
+		capLabel(newKey.Bind.Button, 11, 8)
 		local listening = false
 		local a
 		local current = "key"
@@ -2481,14 +2525,14 @@ function UILIB.newTab(name, img)
 		newSlider.Parent = newTab
 		newSlider.Title.Text = name
 		newSlider.Description.Text = desc or ""
-		capLabel(newSlider.Title, 18, 12)
-		capLabel(newSlider.Description, 14, 10)
+		capLabel(newSlider.Title, 15, 10)
+		capLabel(newSlider.Description, 12, 9)
 		local Mouse = LP:GetMouse()
 		local Trigger = newSlider.ActualSlider.Trigger
 		local Label = newSlider.ActualSlider.Title
 		local Fill = newSlider.ActualSlider.Fill
 		local Parent = newSlider.ActualSlider
-		capLabel(Label, 15, 10)
+		capLabel(Label, 12, 9)
 		local perc = 0
 		local MouseDown = false
 		local function apply(p, fire)
@@ -2527,8 +2571,8 @@ function UILIB.newTab(name, img)
 		newToggle.Visible = true
 		newToggle.Title.Text = title
 		newToggle.Description.Text = desc or ""
-		capLabel(newToggle.Title, 18, 12)
-		capLabel(newToggle.Description, 14, 10)
+		capLabel(newToggle.Title, 15, 10)
+		capLabel(newToggle.Description, 12, 9)
 		hoverCard(newToggle)
 		local function paint(fire)
 			tween(newToggle.Label, 0.2, { BackgroundColor3 = realToggle and GlobalColor2 or GlobalColor1 })
@@ -2574,7 +2618,7 @@ function UILIB.newTab(name, img)
 		titleL.TextScaled = true
 		titleL.Text = tostring(name)
 		titleL.Parent = card
-		capLabel(titleL, 18, 12)
+		capLabel(titleL, 15, 10)
 
 		local descL = Instance.new("TextLabel")
 		descL.BackgroundTransparency = 1
@@ -2586,12 +2630,11 @@ function UILIB.newTab(name, img)
 		descL.TextScaled = true
 		descL.Text = tostring(desc or "")
 		descL.Parent = card
-		capLabel(descL, 14, 10)
+		capLabel(descL, 12, 9)
 
 		local pill = Instance.new("TextButton")
 		pill.Position = UDim2.new(0.014326647855341434, 0, 0.34552592039108276, 0)
 		pill.Size = UDim2.new(0.9684813618659973, 0, 0.29096919298171997, 0)
-		pill.BackgroundColor3 = Color3.fromRGB(30, 34, 48)
 		pill.BorderSizePixel = 0
 		pill.AutoButtonColor = false
 		pill.FontFace = FONT
@@ -2600,10 +2643,11 @@ function UILIB.newTab(name, img)
 		pill.TextScaled = true
 		pill.Text = " none"
 		pill.Parent = card
+		bindSurface(pill, "BackgroundColor3", -12)
 		corner(pill, 0.2)
-		capLabel(pill, 15, 10)
+		capLabel(pill, 12, 9)
 		local pillStroke = Instance.new("UIStroke", pill)
-		pillStroke.Color = Color3.fromRGB(70, 76, 96)
+		bindSurface(pillStroke, "Color", 32)
 		pillStroke.Transparency = 0.2
 		pillStroke.Thickness = 1
 		local pillPad = Instance.new("UIPadding", pill)
@@ -2624,15 +2668,15 @@ function UILIB.newTab(name, img)
 		end
 
 		local body = Instance.new("Frame")
-		body.BackgroundColor3 = Color3.fromRGB(24, 27, 40)
 		body.BorderSizePixel = 0
 		body.Size = UDim2.new(0.9614325165748596, 0, 0, 0)
 		body.Visible = false
 		body.ClipsDescendants = true
 		body.Parent = newTab
+		bindSurface(body, "BackgroundColor3", -19)
 		corner(body, 0.1)
 		local bodyStroke = Instance.new("UIStroke", body)
-		bodyStroke.Color = Color3.fromRGB(70, 76, 96)
+		bindSurface(bodyStroke, "Color", 32)
 		bodyStroke.Transparency = 0.3
 		bodyStroke.Thickness = 1
 
@@ -2644,7 +2688,6 @@ function UILIB.newTab(name, img)
 
 		local searchH = IS_MOBILE and 24 or 30
 		local search = Instance.new("TextBox")
-		search.BackgroundColor3 = Color3.fromRGB(32, 36, 52)
 		search.BorderSizePixel = 0
 		search.Size = UDim2.new(1, 0, 0, searchH)
 		search.FontFace = FONT
@@ -2652,10 +2695,11 @@ function UILIB.newTab(name, img)
 		search.PlaceholderColor3 = Color3.fromRGB(140, 145, 160)
 		search.PlaceholderText = "Search..."
 		search.Text = ""
-		search.TextSize = IS_MOBILE and 12 or 14
+		search.TextSize = IS_MOBILE and 11 or 12
 		search.TextXAlignment = Enum.TextXAlignment.Left
 		search.ClearTextOnFocus = false
 		search.Parent = body
+		bindSurface(search, "BackgroundColor3", -9)
 		corner(search, 0.3)
 		local searchPad = Instance.new("UIPadding", search)
 		searchPad.PaddingLeft = UDim.new(0, 8)
@@ -2688,11 +2732,10 @@ function UILIB.newTab(name, img)
 		end
 
 		local itemH = IS_MOBILE and 26 or 34
-		local itemTextSize = IS_MOBILE and 12 or 15
+		local itemTextSize = IS_MOBILE and 11 or 13
 		local function makeItem(i, list)
 			local key = tostring(list)
 			local item = Instance.new("TextButton")
-			item.BackgroundColor3 = Color3.fromRGB(32, 36, 52)
 			item.BackgroundTransparency = 1
 			item.BorderSizePixel = 0
 			item.Size = UDim2.new(1, 0, 0, itemH)
@@ -2704,6 +2747,7 @@ function UILIB.newTab(name, img)
 			item.AutoButtonColor = false
 			item.LayoutOrder = i
 			item.Parent = scroll
+			bindSurface(item, "BackgroundColor3", -9)
 			corner(item, 0.3)
 
 			local check = Instance.new("ImageLabel")
@@ -2851,7 +2895,7 @@ function UILIB.newTab(name, img)
 		titleL.TextScaled = true
 		titleL.Text = tostring(name)
 		titleL.Parent = card
-		capLabel(titleL, 18, 12)
+		capLabel(titleL, 15, 10)
 
 		local descL = Instance.new("TextLabel")
 		descL.BackgroundTransparency = 1
@@ -2863,7 +2907,7 @@ function UILIB.newTab(name, img)
 		descL.TextScaled = true
 		descL.Text = tostring(desc or "")
 		descL.Parent = card
-		capLabel(descL, 14, 10)
+		capLabel(descL, 12, 9)
 
 		local swatch = Instance.new("TextButton")
 		swatch.Position = UDim2.new(0.014326647855341434, 0, 0.34552592039108276, 0)
@@ -2888,15 +2932,15 @@ function UILIB.newTab(name, img)
 		hexLabel.Parent = swatch
 
 		local grid = Instance.new("Frame")
-		grid.BackgroundColor3 = Color3.fromRGB(24, 27, 40)
 		grid.BorderSizePixel = 0
 		grid.Size = UDim2.new(0.9614325165748596, 0, 0, 0)
 		grid.Visible = false
 		grid.ClipsDescendants = true
 		grid.Parent = newTab
+		bindSurface(grid, "BackgroundColor3", -19)
 		corner(grid, 0.1)
 		local gStroke = Instance.new("UIStroke", grid)
-		gStroke.Color = Color3.fromRGB(70, 76, 96)
+		bindSurface(gStroke, "Color", 32)
 		gStroke.Transparency = 0.3
 		gStroke.Thickness = 1
 		local gPad = Instance.new("UIPadding", grid)
