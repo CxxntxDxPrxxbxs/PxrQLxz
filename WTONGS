@@ -1,0 +1,262 @@
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Nanana291/Kong/refs/heads/main/Nothing.lua"))()
+
+local KeySystem = Library.NewAuth({
+    Title = "Mystery Hub $ KEY SYSTEM",
+    GetKey = function()
+        return "https://discord.gg/tuinvite"
+    end,
+    Auth = function(key)
+        if key == "123" then
+            return true
+        end
+        return nil
+    end,
+    Freeze = true,
+})
+
+local Window = Library.new({
+    Title = "Mystery Hub",
+    Description = "discord.gg/tuinvite",
+    Keybind = Enum.KeyCode.RightShift,
+    Size = UDim2.new(0.1, 480, 0.1, 340),
+    SearchBar = true,
+    Theme = "Kronos",
+})
+
+Window:SetFolder("MysteryHub")
+Window:SetSubFolder(tostring(game.PlaceId))
+
+local MainTab = Window:NewTab({
+    Title = "Main",
+    Description = "Core features",
+    Icon = "home",
+})
+
+local FarmSubTab = MainTab:SubTab({
+    Name = "Farm",
+    Icon = "wheat",
+})
+
+local FarmSection = FarmSubTab:NewSection({
+    Position = "Left",
+    Title = "Auto Farm",
+    Icon = "wheat",
+})
+
+FarmSection:NewTitle("Farm Controls")
+
+FarmSection:NewToggle({
+    Title = "Auto Farm",
+    Default = false,
+    Flag = "AutoFarm",
+    Callback = function(value)
+        print("AutoFarm:", value)
+    end,
+})
+
+FarmSection:NewSlider({
+    Title = "Farm Speed",
+    Min = 1,
+    Max = 100,
+    Default = 25,
+    Flag = "FarmSpeed",
+    Callback = function(value)
+        print("FarmSpeed:", value)
+    end,
+})
+
+local farmModeData = { "Strength", "Durability", "Both" }
+local FarmModeDropdown = FarmSection:NewDropdown({
+    Title = "Farm Mode",
+    Data = farmModeData,
+    Default = "Strength",
+    Multi = false,
+    Flag = "FarmMode",
+    BeforeOpen = function()
+        return farmModeData
+    end,
+    Callback = function(value)
+        print("FarmMode:", value)
+    end,
+})
+
+FarmSection:NewButton({
+    Title = "Refresh Farm Modes",
+    Callback = function()
+        table.insert(farmModeData, "Legendary")
+        FarmModeDropdown.Set(farmModeData)
+    end,
+})
+
+local CombatSubTab = MainTab:SubTab({
+    Name = "Combat",
+    Icon = "sword",
+})
+
+local CombatSection = CombatSubTab:NewSection({
+    Position = "Left",
+    Title = "Combat",
+    Icon = "sword",
+})
+
+CombatSection:NewToggle({
+    Title = "Kill Aura",
+    Default = false,
+    Flag = "KillAura",
+    Callback = function(value)
+        print("KillAura:", value)
+    end,
+})
+
+local autoKillToggle = CombatSection:NewToggle({
+    Title = "Auto Kill",
+    Default = false,
+    Flag = "AutoKill",
+    Callback = function(value)
+        print("AutoKill:", value)
+    end,
+})
+
+autoKillToggle.NewKeybind({
+    Default = Enum.KeyCode.F,
+    Flag = "AutoKillBind",
+    Callback = function(key)
+        print("AutoKill bound to", key)
+    end,
+})
+
+CombatSection:NewColorpicker({
+    Title = "ESP Color",
+    Description = "Color used for enemy highlights",
+    Default = Color3.fromRGB(255, 60, 60),
+    AllowTransparency = true,
+    Transparency = 0.2,
+    Flag = "ESPColor",
+    Callback = function(payload)
+        print("ESPColor Hex:", payload.Hex, "Alpha:", payload.Alpha)
+    end,
+})
+
+local StatsCard = CombatSection:NewControlCard({
+    Title = "Combat Stats",
+    Description = "Live combat performance overview",
+    Icon = "activity",
+    Status = "Idle",
+    Badge = "Beta",
+    Value = "0 kills",
+    Footer = "Updates every second while Auto Kill is active",
+    Collapsible = true,
+    DefaultCollapsed = false,
+    Action = {
+        Icon = "refresh-cw",
+        Callback = function()
+            StatsCard:SetValue("0 kills")
+            StatsCard:SetStatus("Reset")
+        end,
+    },
+})
+
+StatsCard:NewToggle({
+    Title = "Show Kill Feed",
+    Default = true,
+    Flag = "ShowKillFeed",
+    Callback = function(value)
+        print("ShowKillFeed:", value)
+    end,
+})
+
+local killCount = 0
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if autoKillToggle.GetValue() then
+            killCount += 1
+            StatsCard:SetValue(tostring(killCount) .. " kills")
+            StatsCard:SetStatus("Active")
+        end
+    end
+end)
+
+local UtilsTab = Window:NewTab({
+    Title = "Utils",
+    Description = "Extras",
+    Icon = "wrench",
+})
+
+local UtilsSection = UtilsTab:NewSection({
+    Position = "Left",
+    Title = "Misc",
+    Icon = "settings-2",
+})
+
+UtilsSection:Paragraph({
+    Title = "Notice",
+    Description = "This tab holds general utility toggles and inputs.",
+})
+
+UtilsSection:NewTextbox({
+    Title = "Webhook URL",
+    Default = "",
+    FileType = "",
+    Numeric = false,
+    Flag = "WebhookURL",
+    Callback = function(value)
+        print("WebhookURL:", value)
+    end,
+})
+
+UtilsSection:NewTextbox({
+    Title = "Rep Speed",
+    Default = "10",
+    FileType = "",
+    Numeric = true,
+    Flag = "RepSpeed",
+    Callback = function(value)
+        print("RepSpeed numeric:", value)
+    end,
+})
+
+UtilsSection:NewButton({
+    Title = "Send Test Notification",
+    Callback = function()
+        Window.ConfigManager:Notify("Test", "This is a test notification.", "bell")
+    end,
+})
+
+UtilsSection:NewButton({
+    Title = "Standalone Notification",
+    Callback = function()
+        local NotificationManager = Library.Notification()
+        NotificationManager.new({
+            Title = "Standalone",
+            Description = "Created directly via Library.Notification()",
+            Duration = 3,
+            Icon = "check",
+        })
+    end,
+})
+
+local DevSection = UtilsTab:NewSection({
+    Position = "Right",
+    Title = "Developer",
+    Icon = "terminal",
+})
+
+local console
+DevSection:NewButton({
+    Title = "Open Console",
+    Callback = function()
+        if console then
+            return
+        end
+        console = Window.Compatibility and Library:Console() or Library:Console()
+        console:add("kill", function(args)
+            console:print("Killed target: " .. tostring(args[1]))
+        end)
+        console:add("ping", function()
+            console:print("pong")
+        end)
+    end,
+})
+
+Window:AddSettingsTab()
