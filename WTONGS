@@ -16,9 +16,9 @@ local KeySystem = Library.NewAuth({
 
 local Window = Library.new({
     Title = "Mystery Hub",
-    Description = "discord.gg/tuinvite",
+    Description = "discord.gg/mysteryhub",
     Keybind = Enum.KeyCode.RightShift,
-    Size = UDim2.new(0.1, 480, 0.1, 340),
+    Size = UDim2.new(0, 320, 0, 240),
     SearchBar = true,
     Theme = "Kronos",
 })
