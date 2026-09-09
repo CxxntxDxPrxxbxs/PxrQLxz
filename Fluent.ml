@@ -26,7 +26,7 @@ MH.S.JobId = game.JobId
 MH.S.PlaceId = game.PlaceId
 
 MH.V = MH.V or {
-
+    AutoJoinBrawl = false,
 }
 
 MH.T = MH.T or {
@@ -38,6 +38,7 @@ MH.C = MH.C or {
 }
 
 MH.St = MH.St or {
+    -- Tab Home
     Ping = 0,
     FPS = 0,
     FrameCount = 0,
@@ -70,6 +71,8 @@ local U = {
 
 local R = {}
 
+-- Tab Home
+
 D.PlayerInfo = D.PlayerInfo or {
     Name = S.LP.Name,
     DisplayName = S.LP.DisplayName,
@@ -91,7 +94,7 @@ D.GameInfo = D.GameInfo or {
 D.ScriptInfo = D.ScriptInfo or {
     Nombre = "Mystery Hub Rework",
     Version = "1.0.0",
-    Autor = "Grupo Misterioso",
+    Autor = "Mystery",
     Discord = "discord.gg/mysteryhub",
 }
 
@@ -121,6 +124,8 @@ function H.UpdateHomeStats()
     end
 end
 
+-- Tab Farm
+
 if C.Idled then
     C.Idled:Disconnect()
 end
@@ -134,7 +139,7 @@ R.Window = Library:CreateWindow{
     SubTitle = "Muscle Legends Version",
     Icon = "sparkles",
     TabWidth = 150,
-    Size = UDim2.fromOffset(480, 360),
+    Size = UDim2.fromOffset(480, 300),
     Resize = false,
     MinSize = Vector2.new(380, 300),
     Acrylic = true,
@@ -211,7 +216,7 @@ R.GameInfoParagraph = R.Tabs.Main:CreateParagraph("GameInfoParagraph", {
 R.ScriptInfoParagraph = R.Tabs.Main:CreateParagraph("ScriptInfoParagraph", {
     Title = "Script",
     Content = U.string_format(
-        "%s | v%s\nAutor: %s\nDiscord: %s",
+        "%s - v%s\nAutor: %s\nDiscord: %s",
         D.ScriptInfo.Nombre,
         D.ScriptInfo.Version,
         D.ScriptInfo.Autor,
@@ -263,6 +268,44 @@ end)
 ----------------------
 -- Tab Farm
 ----------------------
+
+R.BrawlsSystem = R.Tabs.Farm:CreateSection("Brawl System")
+
+R.AutoJoinBrawl = R.Tabs.Farm:CreateToggle("AutoJoinBrawl", {
+    Title = "Unirse a peleas automaticamente",
+    Description = "Unete a las peleas automaticamente",
+    Default = false,
+    Callback = function(State)
+        V.AutoJoinBrawl = State
+        if not State then return end
+
+        task.spawn(function()
+            while V.AutoJoinBrawl and task.wait(0.5) do
+                if not V.AutoJoinBrawl then break end
+                pcall(function()
+                    if S.LP.PlayerGui.gameGui.brawlJoinLabel.Visible then
+                        S.RS.rEvents.brawlEvent:FireServer("joinBrawl")
+                        S.LP.PlayerGui.gameGui.brawlJoinLabel.Visible = false
+                    end
+                end)
+            end
+        end)
+    end,
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Library.Config:BuildSection(R.Tabs.Settings)
 Library.Config:SetIgnoreIndexes{}
