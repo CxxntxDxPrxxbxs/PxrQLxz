@@ -21,22 +21,18 @@ MH.S = {
 }
 
 MH.S.LP = MH.S.Players.LocalPlayer
-MH.S.Camera = workspace.CurrentCamera
+MH.S.Camera  = workspace.CurrentCamera
 MH.S.JobId = game.JobId
 MH.S.PlaceId = game.PlaceId
 
 MH.V = MH.V or {
+    -- Tab Farm
     AutoJoinBrawl = false,
+    AutoWinBrawl  = false,
 }
 
-MH.T = MH.T or {
-
-}
-
-MH.C = MH.C or {
-
-}
-
+MH.T  = MH.T  or {}
+MH.C  = MH.C  or {}
 MH.St = MH.St or {
     -- Tab Home
     Ping = 0,
@@ -46,19 +42,17 @@ MH.St = MH.St or {
     JoinTick = tick(),
 }
 
-MH.D = MH.D or {
-
-}
-
+MH.D = MH.D or {}
 MH.H = MH.H or {}
 
-local S = MH.S
-local V = MH.V
-local D = MH.D
-local T = MH.T
-local C = MH.C
-local H = MH.H
+local S  = MH.S
+local V  = MH.V
+local D  = MH.D
+local T  = MH.T
+local C  = MH.C
+local H  = MH.H
 local St = MH.St
+
 local U = {
     pcall_ = pcall,
     string_format = string.format,
@@ -71,19 +65,44 @@ local U = {
 
 local R = {}
 
--- Tab Home
+----------------------
+-- DATA (D)
+----------------------
 
+-- Tab Home
 D.PlayerInfo = D.PlayerInfo or {
     Name = S.LP.Name,
     DisplayName = S.LP.DisplayName,
     UserId = S.LP.UserId,
-    AccountAge = S.LP.AccountAge,
+    AccountAge  = S.LP.AccountAge,
 }
 
-D.ExecutorInfo = D.ExecutorInfo or {
-    Name = (identifyexecutor and identifyexecutor()) or "Desconocido",
-    Version = (getexecutorname and getexecutorname()) or "N/A",
-}
+D.ExecutorInfo = D.ExecutorInfo or (function()
+    local name, version = "Desconocido", "N/A"
+
+    if identifyexecutor then
+        local result1, result2 = identifyexecutor()
+
+        if typeof(result1) == "string" then
+            name = result1
+        end
+
+        if typeof(result2) == "string" then
+            version = result2
+        else
+            local ver = string.match(name, "%d+%.%d+%.?%d*")
+            if ver then
+                version = ver
+                name = string.gsub(name, "%s*" .. ver, "")
+            end
+        end
+    end
+
+    return {
+        Name    = name,
+        Version = version
+    }
+end)()
 
 D.GameInfo = D.GameInfo or {
     PlaceId = S.PlaceId,
@@ -92,11 +111,41 @@ D.GameInfo = D.GameInfo or {
 }
 
 D.ScriptInfo = D.ScriptInfo or {
-    Nombre = "Mystery Hub Rework",
+    Nombre  = "Mystery Hub Rework",
     Version = "1.0.0",
     Autor = "Mystery",
     Discord = "discord.gg/mysteryhub",
 }
+
+-- Auto Rocks
+
+D.rockList = D.rockList or {
+    { name = "Tiny Island Rock", durability = 0 },
+    { name = "Starter Island Rock", durability = 100 },
+    { name = "Legend Beach Rock", durability = 5000 },
+    { name = "Frost Gym Rock", durability = 150000 },
+    { name = "Mythical Gym Rock", durability = 400000 },
+    { name = "Eternal Gym Rock", durability = 750000 },
+    { name = "Legend Gym Rock", durability = 1000000 },
+    { name = "Muscle King Gym Rock", durability = 5000000 },
+    { name = "Ancient Jungle Rock", durability = 10000000 },
+    { name = "Industrial Rock", durability = 25000000 },
+}
+
+D.rockNames = {}
+for _, rock in pairs(D.rockList) do
+    table.insert(D.rockNames, rock.name)
+end
+
+V.SelectedRock = V.SelectedRock or ""
+V.AutoRock = V.AutoRock or false
+V.RockTime = V.RockTime or 0
+
+----------------------
+-- HELPERS (H)
+----------------------
+
+-- Tab Home
 
 function H.GetPing()
     local ok, val = U.pcall_(function()
@@ -124,7 +173,118 @@ function H.UpdateHomeStats()
     end
 end
 
--- Tab Farm
+-- Tab Sistema Brawls
+
+function H.IsLocalPlayerReady()
+    local character = S.LP.Character
+    return character
+        and character:FindFirstChild("Humanoid")
+        and character:FindFirstChild("HumanoidRootPart")
+        and character.Humanoid.Health > 0
+end
+
+function H.IsValidBrawlTarget(player)
+    if not player or player == S.LP then return false end
+    local character = player.Character
+    return character
+        and character:FindFirstChild("HumanoidRootPart")
+        and character:FindFirstChild("Humanoid")
+        and character.Humanoid.Health > 0
+end
+
+function H.EquipPunch()
+    pcall(function()
+        local character = S.LP.Character
+        if not character or not character:FindFirstChild("Humanoid") then return end
+
+        local punchTool = S.LP.Backpack:FindFirstChild("Punch") or character:FindFirstChild("Punch")
+        if punchTool and punchTool.Parent ~= character then
+            character.Humanoid:EquipTool(punchTool)
+        end
+
+        if punchTool then
+            pcall(function() punchTool:Activate() end)
+        end
+
+        pcall(function() S.LP.muscleEvent:FireServer("punch", "leftHand") end)
+        pcall(function() S.LP.muscleEvent:FireServer("punch", "rightHand") end)
+    end)
+end
+
+function H.TPToPlayer(player)
+    pcall(function()
+        local character = S.LP.Character
+        local hrp = character and character:FindFirstChild("HumanoidRootPart")
+        local targetRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+
+        if hrp and targetRoot then
+            hrp.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 2.5)
+        end
+    end)
+end
+
+-- Auto Rocks
+
+function H.SafeTouchInterest(part, limb)
+    if not part or not limb then return end
+    pcall(function()
+        firetouchinterest(limb, part, 0)
+        task.wait()
+        firetouchinterest(limb, part, 1)
+    end)
+end
+
+function H.GetTool()
+    local character = S.LP.Character
+    if not character then return end
+
+    local humanoid = character:FindFirstChild("Humanoid")
+    local backpack = S.LP:FindFirstChild("Backpack")
+
+    if humanoid and backpack then
+        for _, v in pairs(backpack:GetChildren()) do
+            if v.Name == "Punch" then
+                humanoid:EquipTool(v)
+            end
+        end
+    end
+
+    pcall(function() S.LP.muscleEvent:FireServer("punch", "leftHand") end)
+    pcall(function() S.LP.muscleEvent:FireServer("punch", "rightHand") end)
+end
+
+function H.FarmRock(character)
+    if not character or not character.Parent then return end
+
+    local leftHand = character:FindFirstChild("LeftHand")
+    local rightHand = character:FindFirstChild("RightHand")
+    if not leftHand or not rightHand then return end
+
+    local durability = 0
+    for _, rock in pairs(D.rockList) do
+        if rock.name == V.SelectedRock then
+            durability = rock.durability
+            break
+        end
+    end
+
+    local okDur, durValue = pcall(function() return S.LP.Durability.Value end)
+    if not okDur or durValue < durability then return end
+
+    local machinesFolder = workspace:FindFirstChild("machinesFolder")
+    if not machinesFolder then return end
+
+    for _, v in pairs(machinesFolder:GetDescendants()) do
+        if v.Name == "neededDurability" and v.Value == durability then
+            local rockPart = v.Parent and v.Parent:FindFirstChild("Rock")
+            if rockPart then
+                H.SafeTouchInterest(rockPart, rightHand)
+                H.SafeTouchInterest(rockPart, leftHand)
+                H.GetTool()
+            end
+        end
+    end
+end
 
 if C.Idled then
     C.Idled:Disconnect()
@@ -180,7 +340,7 @@ Library:Notify{
 }
 
 ----------------------
--- Tab Home
+-- TAB HOME
 ----------------------
 
 R.PlayerInfoParagraph = R.Tabs.Main:CreateParagraph("PlayerInfoParagraph", {
@@ -266,14 +426,14 @@ task.spawn(function()
 end)
 
 ----------------------
--- Tab Farm
+-- TAB FARM
 ----------------------
 
-R.BrawlsSystem = R.Tabs.Farm:CreateSection("Brawl System")
+R.BrawlsSystem = R.Tabs.Farm:CreateSection("Sistema de peleas")
 
 R.AutoJoinBrawl = R.Tabs.Farm:CreateToggle("AutoJoinBrawl", {
     Title = "Unirse a peleas automaticamente",
-    Description = "Unete a las peleas automaticamente",
+    Description = "Te lleva a pelear sin necesidad de hacer click en el boton de unirse",
     Default = false,
     Callback = function(State)
         V.AutoJoinBrawl = State
@@ -293,7 +453,168 @@ R.AutoJoinBrawl = R.Tabs.Farm:CreateToggle("AutoJoinBrawl", {
     end,
 })
 
+R.AutoWinBrawl = R.Tabs.Farm:CreateToggle("AutoWinBrawl", {
+    Title = "Ganar peleas automaticamente",
+    Description = "Se une, se teletransporta a los enemigos y los mata con puños",
+    Default = false,
+    Callback = function(State)
+        V.AutoWinBrawl = State
+        if not State then return end
 
+        task.spawn(function()
+            while V.AutoWinBrawl and task.wait(0.5) do
+                if not V.AutoWinBrawl then break end
+                pcall(function()
+                    if S.LP.PlayerGui.gameGui.brawlJoinLabel.Visible then
+                        S.RS.rEvents.brawlEvent:FireServer("joinBrawl")
+                        S.LP.PlayerGui.gameGui.brawlJoinLabel.Visible = false
+                    end
+                end)
+            end
+        end)
+
+        task.spawn(function()
+            while V.AutoWinBrawl and task.wait(0.4) do
+                if not V.AutoWinBrawl then break end
+                H.EquipPunch()
+            end
+        end)
+
+        task.spawn(function()
+            while V.AutoWinBrawl and task.wait(0.08) do
+                if not V.AutoWinBrawl then break end
+
+                if H.IsLocalPlayerReady() and S.RS:FindFirstChild("brawlInProgress") and S.RS.brawlInProgress.Value then
+                    pcall(function() S.LP.muscleEvent:FireServer("punch", "rightHand") end)
+                    pcall(function() S.LP.muscleEvent:FireServer("punch", "leftHand") end)
+                end
+            end
+        end)
+
+        task.spawn(function()
+            while V.AutoWinBrawl and task.wait(0.12) do
+                if not V.AutoWinBrawl then break end
+
+                if H.IsLocalPlayerReady() and S.RS:FindFirstChild("brawlInProgress") and S.RS.brawlInProgress.Value then
+                    for _, player in pairs(S.Players:GetPlayers()) do
+                        if not V.AutoWinBrawl then break end
+
+                        if H.IsValidBrawlTarget(player) then
+                            H.TPToPlayer(player)
+                            H.EquipPunch()
+                            task.wait(0.03)
+                        end
+                    end
+                end
+            end
+        end)
+
+        task.spawn(function()
+            local lastPlayerCount = 0
+            local stuckCounter = 0
+
+            while V.AutoWinBrawl and task.wait(1) do
+                if not V.AutoWinBrawl then break end
+
+                local currentPlayerCount = #S.Players:GetPlayers()
+
+                if currentPlayerCount ~= lastPlayerCount then
+                    stuckCounter = 0
+                    lastPlayerCount = currentPlayerCount
+                else
+                    stuckCounter = stuckCounter + 1
+
+                    if stuckCounter > 5 then
+                        stuckCounter = 0
+                        pcall(function()
+                            local character = S.LP.Character
+                            if character and character:FindFirstChild("Punch") then
+                                character.Punch.Parent = S.LP.Backpack
+                                task.wait(0.1)
+                            end
+                            H.EquipPunch()
+                        end)
+                    end
+                end
+            end
+        end)
+    end,
+})
+
+R.RocksSystem = R.Tabs.Farm:CreateSection("Golpear rocas")
+
+R.RockCounter = R.Tabs.Farm:CreateParagraph("RockCounter", {
+    Title = "Tiempo de farmeo",
+    Content = "Tiempo: 00:00:00"
+})
+
+if C.RockTimerLoop then
+    C.RockTimerLoop = nil
+end
+task.spawn(function()
+    while myGen == MH.Gen do
+        task.wait(1)
+        if V.AutoRock then
+            V.RockTime = V.RockTime + 1
+        end
+        if R.RockCounter then
+            R.RockCounter:SetValue("Time: " .. H.FormatTime(V.RockTime))
+        end
+    end
+end)
+
+R.RockDropdown = R.Tabs.Farm:CreateDropdown("RockDropdown", {
+    Title = "Selecciona una roca",
+    Values = D.rockNames,
+    Value = V.SelectedRock,
+    Multi = false,
+    AllowNone = true,
+    SearchBarEnabled = true,
+    Callback = function(val)
+        V.SelectedRock = val
+    end,
+})
+
+R.AutoRockToggle = R.Tabs.Farm:CreateToggle("AutoRockToggle", {
+    Title = "Golpear Roca",
+    Description = "Golpea las rocas automáticamente",
+    Default = false,
+    Callback = function(state)
+        V.AutoRock = state
+
+        if C.AutoRockCharConn then
+            C.AutoRockCharConn:Disconnect()
+            C.AutoRockCharConn = nil
+        end
+
+        if not state then return end
+
+        local function runLoop(character)
+            local humanoid = character:FindFirstChild("Humanoid")
+            task.spawn(function()
+                while V.AutoRock and character.Parent and humanoid and humanoid.Health > 0 do
+                if V.SelectedRock and V.SelectedRock ~= "" then
+                    H.FarmRock(character)
+                end
+                    task.wait()
+                end
+            end)
+        end
+
+        if S.LP.Character then
+            runLoop(S.LP.Character)
+        end
+
+        C.AutoRockCharConn = S.LP.CharacterAdded:Connect(function(newCharacter)
+            if V.AutoRock then
+                task.wait(1)
+                runLoop(newCharacter)
+            end
+        end)
+    end,
+})
+
+R.RocksSystem = R.Tabs.Farm:CreateSection("Equipar herramientas")
 
 
 
@@ -317,7 +638,7 @@ InterfaceManager:BuildInterfaceSection(R.Tabs.Settings)
 R.Window:SelectTab(1)
 
 Library:Notify{
-    Title = "Muscle Legends Version",
-    Content = "Script ejecutado correctamente",
+    Title    = "Muscle Legends Version",
+    Content  = "Script ejecutado correctamente",
     Duration = 8
 }
