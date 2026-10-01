@@ -651,9 +651,13 @@ do
         end
     end
 
+    Farm:Section({
+        Title = "Brawls",
+    })
+
     local AutoJoinBrawlsToggle = Farm:Toggle({
         Title = "Auto join Brawls",
-        Desc = "Joins brawls automatically",
+        Desc = "Joins brawls automatically when the prompt appears",
         Value = false,
         Callback = function(state)
             autoJoinBrawls = state
@@ -662,7 +666,7 @@ do
     Util.register("autojoin_brawls", AutoJoinBrawlsToggle)
 
     local AutoFarmBrawlsToggle = Farm:Toggle({
-        Title = "AutoFarm Brawls",
+        Title = "Auto Win Brawls",
         Desc = "Win fights automatically",
         Value = false,
         Callback = function(state)
@@ -719,6 +723,188 @@ do
                         attackPlayer(player)
                     end
                 end
+            end
+        end
+    end)
+
+    local rockList = {
+        { name = "Tiny Island Rock", durability = 0 },
+        { name = "Starter Island Rock", durability = 100 },
+        { name = "Legend Beach Rock", durability = 5000 },
+        { name = "Frost Gym Rock", durability = 150000 },
+        { name = "Mythical Gym Rock", durability = 400000 },
+        { name = "Eternal Gym Rock", durability = 750000 },
+        { name = "Legend Gym Rock", durability = 1000000 },
+        { name = "Muscle King Gym Rock", durability = 5000000 },
+        { name = "Ancient Jungle Rock", durability = 10000000 },
+        { name = "Industrial Rock", durability = 25000000 },
+    }
+
+    local rockNames = {}
+    for _, rock in ipairs(rockList) do
+        table.insert(rockNames, rock.name)
+    end
+
+    local selectedRock = rockNames[1]
+    local autoRock = false
+    local rockTime = 0
+    local rockSession = 0
+    local rockParts = {}
+    local scannedRock = nil
+    local lastRockScan = 0
+
+    local function getRockDurability(name)
+        for _, rock in ipairs(rockList) do
+            if rock.name == name then
+                return rock.durability
+            end
+        end
+        return nil
+    end
+
+    local function safeTouch(rockPart, hand)
+        if not firetouchinterest then
+            return
+        end
+        pcall(function()
+            firetouchinterest(hand, rockPart, 0)
+            firetouchinterest(hand, rockPart, 1)
+        end)
+    end
+
+    local function scanRocks(durability)
+        local found = {}
+        local machines = workspace:FindFirstChild("machinesFolder")
+        if not machines then
+            return found
+        end
+        for _, object in ipairs(machines:GetDescendants()) do
+            if object.Name == "neededDurability" and object:IsA("ValueBase") and object.Value == durability then
+                local rockPart = object.Parent and object.Parent:FindFirstChild("Rock")
+                if rockPart then
+                    table.insert(found, rockPart)
+                end
+            end
+        end
+        return found
+    end
+
+    local function rockStep()
+        local character = getCharacter(LocalPlayer)
+        if not character or character:GetAttribute("InBattle") == true then
+            return
+        end
+
+        local punch = equipPunch()
+        if punch then
+            local attackTime = punch:FindFirstChild("attackTime")
+            if attackTime then
+                attackTime.Value = 0
+            end
+            punch:Activate()
+        end
+
+        local leftHand = character:FindFirstChild("LeftHand")
+        local rightHand = character:FindFirstChild("RightHand")
+        if not leftHand or not rightHand then
+            return
+        end
+
+        local durability = getRockDurability(selectedRock)
+        if not durability then
+            return
+        end
+
+        local okDur, durValue = pcall(function()
+            return LocalPlayer.Durability.Value
+        end)
+        if not okDur or type(durValue) ~= "number" or durValue < durability then
+            return
+        end
+
+        local now = os.clock()
+        if scannedRock ~= selectedRock or now - lastRockScan >= 5 then
+            rockParts = scanRocks(durability)
+            scannedRock = selectedRock
+            lastRockScan = now
+        end
+
+        for _, rockPart in ipairs(rockParts) do
+            if rockPart.Parent then
+                safeTouch(rockPart, rightHand)
+                safeTouch(rockPart, leftHand)
+            end
+        end
+    end
+
+    Farm:Section({
+        Title = "Rocks",
+    })
+
+    local RockTimerParagraph = Farm:Paragraph({
+        Title = "Farm Timer",
+        Desc = "Time: 00:00:00",
+    })
+
+    Farm:Button({
+        Title = "Reset timer",
+        Icon = "rotate-ccw",
+        Callback = function()
+            rockTime = 0
+            pcall(function()
+                RockTimerParagraph:SetDesc("Time: " .. Util.formatTime(rockTime))
+            end)
+        end,
+    })
+
+    local RockDropdown = Farm:Dropdown({
+        Title = "Select Rock",
+        Values = rockNames,
+        Value = selectedRock,
+        Callback = function(option)
+            if type(option) == "string" then
+                selectedRock = option
+            end
+        end,
+    })
+    Util.register("selected_rock", RockDropdown)
+
+    local AutoRockToggle = Farm:Toggle({
+        Title = "Auto Farm Rock",
+        Desc = "Punches the selected rock",
+        Value = false,
+        Callback = function(state)
+            autoRock = state
+            rockSession = rockSession + 1
+            if not state then
+                return
+            end
+
+            if not firetouchinterest then
+                Util.notify("Rocks", "Your executor doesn't support firetouchinterest.", "triangle-alert")
+            end
+
+            local session = rockSession
+            rockParts = {}
+            scannedRock = nil
+
+            task.spawn(function()
+                while autoRock and isAlive() and rockSession == session do
+                    pcall(rockStep)
+                    task.wait()
+                end
+            end)
+        end,
+    })
+    Util.register("autofarm_rock", AutoRockToggle)
+
+    task.spawn(function()
+        while task.wait(1) and isAlive() do
+            if autoRock then
+                rockTime = rockTime + 1
+                pcall(function()
+                    RockTimerParagraph:SetDesc("Time: " .. Util.formatTime(rockTime))
+                end)
             end
         end
     end)
