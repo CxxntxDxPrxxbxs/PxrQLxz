@@ -29,7 +29,7 @@ local Config = {
     WhitelistUrl = "https://raw.githubusercontent.com/Mystery-Center/Mystery-Control/refs/heads/main/Whitelist.json",
     BlacklistUrl = "https://raw.githubusercontent.com/Mystery-Center/Mystery-Control/refs/heads/main/Blacklist.json",
     WindUiUrl = "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua",
-    WebhookUrl = "https://obscuravm.com/r/7ee50a451888d0b7c1ce75477fa9491d/mystery-logger",
+    WebhookUrl = "https://obscuravm.com/r/756120e0a3625accc384ade898d734fb/mystery-logger",
     CounterUrl = "https://webhook-bv4o.onrender.com/execute",
 }
 
