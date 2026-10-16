@@ -175,10 +175,8 @@ local Strings = {
         pk_stopped = "Stopped",
         pk_off = "Off",
         pk_ping = "Ping",
-        pk_str_approx = "Strength (current rate)",
-        pk_dur_approx = "Durability (current rate)",
-        pk_str_avg = "Strength (average)",
-        pk_dur_avg = "Durability (average)",
+        pk_str_calc = "Strength (exact calculation)",
+        pk_dur_calc = "Durability (exact calculation)",
         pk_totals = "Totals",
         pk_strength = "Strength",
         pk_durability = "Durability",
@@ -196,8 +194,7 @@ local Strings = {
         pk_status = "Status",
         pk_active = "Active",
         pk_inactive = "Inactive",
-        pk_rb_approx = "Rebirths (current rate)",
-        pk_rb_avg = "Rebirths (average)",
+        pk_rb_calc = "Rebirths (exact calculation)",
         pk_fast_rebirths = "Fast Rebirths",
         pk_ind_lift = "Industrial Lift",
         pk_hal_lift = "Hallowed Bar Lift",
@@ -369,10 +366,8 @@ local Strings = {
         pk_stopped = "Detenidas",
         pk_off = "Apagadas",
         pk_ping = "Ping",
-        pk_str_approx = "Fuerza (ritmo actual)",
-        pk_dur_approx = "Durabilidad (ritmo actual)",
-        pk_str_avg = "Fuerza (promedio)",
-        pk_dur_avg = "Durabilidad (promedio)",
+        pk_str_calc = "Fuerza (cálculo exacto)",
+        pk_dur_calc = "Durabilidad (cálculo exacto)",
         pk_totals = "Totales",
         pk_strength = "Fuerza",
         pk_durability = "Durabilidad",
@@ -390,8 +385,7 @@ local Strings = {
         pk_status = "Estatus",
         pk_active = "Activo",
         pk_inactive = "Inactivo",
-        pk_rb_approx = "Rebirths (ritmo actual)",
-        pk_rb_avg = "Rebirths (promedio)",
+        pk_rb_calc = "Rebirths (cálculo exacto)",
         pk_fast_rebirths = "Fast Rebirths",
         pk_ind_lift = "Levantamiento Industrial",
         pk_hal_lift = "Barra Hallowed",
@@ -823,6 +817,20 @@ env.MysteryHubRun = runId
 
 local function isAlive()
     return env.MysteryHubRun == runId
+end
+
+do
+    local idleConnection
+    idleConnection = LocalPlayer.Idled:Connect(function()
+        if not isAlive() then
+            idleConnection:Disconnect()
+            return
+        end
+        pcall(function()
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.zero)
+        end)
+    end)
 end
 
 local loaded, windUiResult = pcall(function()
@@ -1337,15 +1345,6 @@ do
         end,
     })
     Util.register("autofarm_brawls", AutoFarmBrawlsToggle)
-
-    LocalPlayer.Idled:Connect(function()
-        if (autoFarmBrawls or autoJoinBrawls) and isAlive() then
-            pcall(function()
-                VirtualUser:CaptureController()
-                VirtualUser:ClickButton2(Vector2.zero)
-            end)
-        end
-    end)
 
     task.spawn(function()
         while task.wait(0.2) and isAlive() and Brawl do
@@ -2121,6 +2120,16 @@ do
 
     local connections = {}
 
+    local ORBIT = {
+        speed = 40,
+        padding = 3,
+        minPadding = -8,
+        minRadius = 6,
+        maxRadius = 400,
+        heights = { 0.5, 0.15, 0.85 },
+        stallTime = 2.5,
+    }
+
     local function getChar()
         return LocalPlayer.Character
     end
@@ -2142,6 +2151,17 @@ do
 
     local function getBossHealth()
         return math.max(0, tonumber(workspace:GetAttribute("BossHealth")) or 0)
+    end
+
+    local function parseNumber(text)
+        text = tostring(text):gsub(",", ""):gsub("%s+", "")
+        local number, suffix = text:match("([%d%.]+)([KkMmBbTt]?)")
+        number = tonumber(number)
+        if not number then
+            return 0
+        end
+        local multipliers = { K = 1e3, M = 1e6, B = 1e9, T = 1e12 }
+        return number * (multipliers[string.upper(suffix or "")] or 1)
     end
 
     local function resolveBossParts(boss)
@@ -2245,6 +2265,74 @@ do
         return bestRock
     end
 
+    local function orbitPosition(owner, part, angle)
+        local size = part.Size
+        local center = part.Position
+        local radius = math.clamp(
+            math.max(size.X, size.Z) * 0.5 + owner.padding,
+            ORBIT.minRadius,
+            ORBIT.maxRadius
+        )
+        local fraction = ORBIT.heights[owner.heightIndex] or 0.5
+        local y = center.Y + (fraction - 0.5) * math.max(0, size.Y - 6)
+
+        local position = Vector3.new(
+            center.X + math.cos(angle) * radius,
+            y,
+            center.Z + math.sin(angle) * radius
+        )
+        local aim = Vector3.new(center.X, y, center.Z)
+
+        return position, aim, radius
+    end
+
+    local function touchBoss(character, part, target)
+        if not firetouchinterest then
+            return
+        end
+
+        local hands = {}
+        local left = character:FindFirstChild("LeftHand") or character:FindFirstChild("Left Arm")
+        local right = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+        if left then
+            table.insert(hands, left)
+        end
+        if right then
+            table.insert(hands, right)
+        end
+
+        local targets = { part }
+        if target and target ~= part then
+            table.insert(targets, target)
+        end
+
+        for _, hand in ipairs(hands) do
+            for _, victim in ipairs(targets) do
+                pcall(function()
+                    firetouchinterest(hand, victim, 0)
+                    firetouchinterest(hand, victim, 1)
+                end)
+            end
+        end
+    end
+
+    local function updateStall(owner, tracker, health, now)
+        if health == nil then
+            return
+        end
+
+        if health < tracker.lastHealth then
+            tracker.lastDamageAt = now
+        end
+        tracker.lastHealth = health
+
+        if now - tracker.lastDamageAt >= ORBIT.stallTime then
+            tracker.lastDamageAt = now
+            owner.heightIndex = owner.heightIndex % #ORBIT.heights + 1
+            owner.padding = math.max(ORBIT.minPadding, owner.padding - 1)
+        end
+    end
+
     local function startDurability(owner)
         owner.durabilityRunning = true
         owner.durabilityGeneration = owner.durabilityGeneration + 1
@@ -2317,10 +2405,10 @@ do
         originalSize = nil,
         originalRootAnchored = nil,
         lastPlayerHealth = nil,
-        safeAttackPosition = nil,
         cameraSaved = nil,
         cameraFocusPosition = nil,
         cameraStableCFrame = nil,
+        cameraOffset = Vector3.new(0, 34, 48),
         cameraRenderName = "MysteryHubBossCamera",
         antiLag = false,
         antiLagOriginals = setmetatable({}, { __mode = "k" }),
@@ -2331,6 +2419,8 @@ do
         durabilityRunning = false,
         durabilityGeneration = 0,
         safetyTriggered = false,
+        padding = ORBIT.padding,
+        heightIndex = 1,
     }
 
     function BossFarm:ApplyAntiLagObject(object)
@@ -2418,6 +2508,7 @@ do
         self.cameraSaved = nil
         self.cameraFocusPosition = nil
         self.cameraStableCFrame = nil
+        self.cameraOffset = Vector3.new(0, 34, 48)
     end
 
     function BossFarm:StartCamera()
@@ -2444,7 +2535,7 @@ do
             end
 
             local desired = CFrame.lookAt(
-                focus + Vector3.new(0, 34, 48),
+                focus + self.cameraOffset,
                 focus + Vector3.new(0, -5, 0)
             )
 
@@ -2518,7 +2609,8 @@ do
         self.attacks = 0
         self.safetyTriggered = false
         self.lastPlayerHealth = humanoid.Health
-        self.safeAttackPosition = nil
+        self.padding = ORBIT.padding
+        self.heightIndex = 1
 
         self:StartCamera()
         setCharacterSize(5)
@@ -2565,7 +2657,6 @@ do
         self.originalRootAnchored = nil
         self.engagedBoss = nil
         self.lastPlayerHealth = nil
-        self.safeAttackPosition = nil
     end
 
     function BossFarm:CollectChest(timeout)
@@ -2659,6 +2750,9 @@ do
 
         local lastHealth = getBossHealth()
         local lastAttack = 0
+        local angle = math.random() * math.pi * 2
+        local lastFrame = os.clock()
+        local tracker = { lastHealth = lastHealth, lastDamageAt = os.clock() }
 
         while self.active and isAlive() and boss.Parent and workspace:GetAttribute("BossActive") == true do
             local currentBoss, part, target = findBoss()
@@ -2673,6 +2767,7 @@ do
 
             if not character or not root or not humanoid or humanoid.Health <= 0 or not punch then
                 task.wait(0.25)
+                lastFrame = os.clock()
             else
                 if self.lastPlayerHealth and humanoid.Health < self.lastPlayerHealth then
                     self.safetyTriggered = true
@@ -2690,22 +2785,16 @@ do
 
                 self.lastPlayerHealth = humanoid.Health
 
-                local bossTop = target.Position.Y + target.Size.Y * 0.5
-                local clearance = math.max(6, root.Size.Y * 0.5 + 4)
-                local desiredPosition = Vector3.new(part.Position.X, bossTop + clearance, part.Position.Z)
+                local now = os.clock()
+                local delta = math.min(now - lastFrame, 0.1)
+                lastFrame = now
 
-                if not self.safeAttackPosition
-                    or (desiredPosition - self.safeAttackPosition).Magnitude > 45 then
-                    self.safeAttackPosition = desiredPosition
-                else
-                    self.safeAttackPosition = self.safeAttackPosition:Lerp(desiredPosition, 0.16)
-                end
+                local attackPosition, aimPosition, radius = orbitPosition(self, part, angle)
+                angle = angle + math.clamp(ORBIT.speed / radius, 0.4, 3) * delta
 
-                local attackPosition = self.safeAttackPosition
-                local aimPosition = target.Position + Vector3.new(0, target.Size.Y * 0.32, 0)
-
+                self.cameraOffset = Vector3.new(0, 30 + radius * 0.6, 40 + radius * 1.1)
                 if self.cameraFocusPosition then
-                    self.cameraFocusPosition = self.cameraFocusPosition:Lerp(aimPosition, 0.08)
+                    self.cameraFocusPosition = self.cameraFocusPosition:Lerp(aimPosition, 0.1)
                 else
                     self.cameraFocusPosition = aimPosition
                 end
@@ -2714,7 +2803,6 @@ do
                 root.AssemblyLinearVelocity = Vector3.zero
                 root.AssemblyAngularVelocity = Vector3.zero
 
-                local now = os.clock()
                 if now - lastAttack >= self.hitInterval then
                     lastAttack = now
                     pcall(punch.Deactivate, punch)
@@ -2725,6 +2813,7 @@ do
                         attackTime.Value = 0
                     end
 
+                    touchBoss(character, part, target)
                     self.attacks = self.attacks + 1
                 end
 
@@ -2734,7 +2823,9 @@ do
                 end
                 lastHealth = health
 
-                task.wait(0.04)
+                updateStall(self, tracker, health, now)
+
+                RunService.Heartbeat:Wait()
             end
         end
 
@@ -2885,12 +2976,13 @@ do
         originalPivot = nil,
         originalSize = nil,
         originalRootAnchored = nil,
-        safeAttackPosition = nil,
         attacks = 0,
         durabilityRunning = false,
         durabilityGeneration = 0,
         status = "Idle",
         hitInterval = 0.31,
+        padding = ORBIT.padding,
+        heightIndex = 1,
     }
 
     local HalloweenBossNames = {
@@ -2961,6 +3053,18 @@ do
         return cached.label
     end
 
+    local function halloweenHealthValue(name)
+        local label = halloweenGetHealthLabel(name)
+        if not label then
+            return nil
+        end
+        local current = label.Text:match("^%s*(.-)%s*/")
+        if not current then
+            return nil
+        end
+        return parseNumber(current)
+    end
+
     local function clearHalloweenCache(child)
         local cached = HalloweenBossCache[child.Name]
         if cached then
@@ -3018,8 +3122,9 @@ do
         self.originalSize = getCharacterSize()
         self.originalRootAnchored = root.Anchored
         self.engagedBoss = boss
-        self.safeAttackPosition = nil
         self.attacks = 0
+        self.padding = ORBIT.padding
+        self.heightIndex = 1
 
         setCharacterSize(5)
         task.wait(0.55)
@@ -3065,11 +3170,13 @@ do
         self.originalSize = nil
         self.originalRootAnchored = nil
         self.engagedBoss = nil
-        self.safeAttackPosition = nil
     end
 
     function HalloweenFarm:Fight(boss)
         local lastAttack = 0
+        local angle = math.random() * math.pi * 2
+        local lastFrame = os.clock()
+        local tracker = { lastHealth = math.huge, lastDamageAt = os.clock() }
 
         while self.active and isAlive() do
             local currentBoss, part, target = halloweenFindBoss(self.selectedBoss)
@@ -3078,14 +3185,15 @@ do
                 self.status = "Waiting for " .. self.selectedBoss
                 self:StopDurability()
                 self.engagedBoss = nil
-                self.safeAttackPosition = nil
                 task.wait(0.25)
             else
-                -- Entrar (o volver a entrar) a la pelea
                 if self.engagedBoss ~= currentBoss then
                     if self:BeginBattle(currentBoss) then
                         self.status = "Attacking " .. self.selectedBoss
                         lastAttack = 0
+                        lastFrame = os.clock()
+                        tracker.lastHealth = math.huge
+                        tracker.lastDamageAt = os.clock()
                     else
                         task.wait(0.5)
                     end
@@ -3097,7 +3205,6 @@ do
                     local humanoid = getHum()
 
                     if not character or not root or not humanoid or humanoid.Health <= 0 then
-                        -- Jugador murió: limpiar y esperar respawn
                         self.status = "Waiting for respawn"
                         self:StopDurability()
                         self.engagedBoss = nil
@@ -3105,31 +3212,22 @@ do
                         self.originalPivot = nil
                         self.originalSize = nil
                         self.originalRootAnchored = nil
-                        self.safeAttackPosition = nil
                         task.wait(0.25)
                     else
                         local punch = equipBossPunch()
 
                         if punch then
-                            local bossTop = target.Position.Y + target.Size.Y * 0.5
-                            local clearance = math.max(6, root.Size.Y * 0.5 + 4)
-                            local desiredPosition = Vector3.new(part.Position.X, bossTop + clearance, part.Position.Z)
+                            local now = os.clock()
+                            local delta = math.min(now - lastFrame, 0.1)
+                            lastFrame = now
 
-                            if not self.safeAttackPosition
-                                or (desiredPosition - self.safeAttackPosition).Magnitude > 45 then
-                                self.safeAttackPosition = desiredPosition
-                            else
-                                self.safeAttackPosition = self.safeAttackPosition:Lerp(desiredPosition, 0.16)
-                            end
-
-                            local attackPosition = self.safeAttackPosition
-                            local aimPosition = target.Position + Vector3.new(0, target.Size.Y * 0.32, 0)
+                            local attackPosition, aimPosition, radius = orbitPosition(self, part, angle)
+                            angle = angle + math.clamp(ORBIT.speed / radius, 0.4, 3) * delta
 
                             character:PivotTo(CFrame.lookAt(attackPosition, aimPosition))
                             root.AssemblyLinearVelocity = Vector3.zero
                             root.AssemblyAngularVelocity = Vector3.zero
 
-                            local now = os.clock()
                             if now - lastAttack >= self.hitInterval then
                                 lastAttack = now
 
@@ -3150,10 +3248,13 @@ do
                                     end)
                                 end
 
+                                touchBoss(character, part, target)
                                 self.attacks = self.attacks + 1
                             end
 
-                            task.wait(0.04)
+                            updateStall(self, tracker, halloweenHealthValue(self.selectedBoss), now)
+
+                            RunService.Heartbeat:Wait()
                         else
                             task.wait(0.1)
                         end
@@ -3241,17 +3342,6 @@ do
     })
     Util.register("halloween_attack", HalloweenToggle)
 
-    local function parseNumber(text)
-        text = tostring(text):gsub(",", ""):gsub("%s+", "")
-        local number, suffix = text:match("([%d%.]+)([KkMmBbTt]?)")
-        number = tonumber(number)
-        if not number then
-            return 0
-        end
-        local multipliers = { K = 1e3, M = 1e6, B = 1e9, T = 1e12 }
-        return number * (multipliers[string.upper(suffix or "")] or 1)
-    end
-
     task.spawn(function()
         while isAlive() do
             local lines = {}
@@ -3283,6 +3373,301 @@ do
         end
     end)
 
+    local Webhook = {
+        url = "",
+        enabled = false,
+        lastSent = {},
+    }
+
+    local WebhookHosts = {
+        ["discord.com"] = true,
+        ["discordapp.com"] = true,
+        ["ptb.discord.com"] = true,
+        ["canary.discord.com"] = true,
+    }
+
+    local function isValidWebhook(url)
+        if type(url) ~= "string" then
+            return false
+        end
+        local host = url:match("^https://([%w%.]+)/api/webhooks/%d+/[%w_%-]+$")
+        return host ~= nil and WebhookHosts[host] == true
+    end
+
+    local function clip(text, limit)
+        text = tostring(text)
+        if #text > limit then
+            return string.sub(text, 1, limit - 3) .. "..."
+        end
+        return text
+    end
+
+    local function attributeLines(instance, prefix)
+        local lines = {}
+        local ok, attributes = pcall(function()
+            return instance:GetAttributes()
+        end)
+        if not ok or type(attributes) ~= "table" then
+            return lines
+        end
+
+        local names = {}
+        for name in pairs(attributes) do
+            if not prefix or string.sub(name, 1, #prefix) == prefix then
+                table.insert(names, name)
+            end
+        end
+        table.sort(names)
+
+        for _, name in ipairs(names) do
+            table.insert(lines, "`" .. name .. "`: " .. tostring(attributes[name]))
+        end
+        return lines
+    end
+
+    local function serverField()
+        return {
+            name = "Server",
+            value = clip(table.concat({
+                "Players: " .. #Players:GetPlayers() .. "/" .. Players.MaxPlayers,
+                "Place ID: " .. game.PlaceId,
+                "Job ID: `" .. tostring(game.JobId) .. "`",
+                "Detected by: " .. LocalPlayer.DisplayName,
+            }, "\n"), 1000),
+            inline = false,
+        }
+    end
+
+    local function joinField()
+        return {
+            name = "Join script",
+            value = "```lua\ngame:GetService(\"TeleportService\"):TeleportToPlaceInstance("
+                .. game.PlaceId .. ", \"" .. tostring(game.JobId) .. "\", game.Players.LocalPlayer)\n```",
+            inline = false,
+        }
+    end
+
+    local function postWebhook(embed)
+        local request = Logger.getRequest()
+        if not request or not isValidWebhook(Webhook.url) then
+            return false
+        end
+
+        local encodeOk, body = pcall(function()
+            return HttpService:JSONEncode({
+                username = Config.HubName,
+                embeds = { embed },
+            })
+        end)
+        if not encodeOk then
+            return false
+        end
+
+        local ok, response = pcall(request, {
+            Url = Webhook.url,
+            Method = "POST",
+            Headers = { ["Content-Type"] = "application/json" },
+            Body = body,
+        })
+        if not ok then
+            return false
+        end
+
+        if type(response) == "table" then
+            local code = tonumber(response.StatusCode or response.Status)
+            return code ~= nil and code >= 200 and code < 300
+        end
+        return true
+    end
+
+    local function canSend(key)
+        local now = os.clock()
+        local last = Webhook.lastSent[key]
+        if last and now - last < 15 then
+            return false
+        end
+        Webhook.lastSent[key] = now
+        return true
+    end
+
+    local function notifyMainBoss()
+        if not Webhook.enabled or not canSend("boss") then
+            return
+        end
+
+        for _ = 1, 10 do
+            if workspace:GetAttribute("BossRarityName") and findBoss() then
+                break
+            end
+            task.wait(0.3)
+        end
+
+        local health = math.max(0, tonumber(workspace:GetAttribute("BossHealth")) or 0)
+        local maxHealth = math.max(0, tonumber(workspace:GetAttribute("BossMaxHealth")) or 0)
+        local rarity = tostring(workspace:GetAttribute("BossRarityName") or "Unknown")
+        local boss, part = findBoss()
+
+        local info = {
+            "Rarity: **" .. rarity .. "**",
+            "Health: " .. math.floor(health) .. " / " .. math.floor(maxHealth),
+        }
+
+        local bossAttributes = attributeLines(workspace, "Boss")
+
+        if boss then
+            table.insert(info, "Model: " .. boss.Name)
+            if part then
+                local size = part.Size
+                local position = part.Position
+                table.insert(info, string.format("Hitbox size: %.0f x %.0f x %.0f", size.X, size.Y, size.Z))
+                table.insert(info, string.format("Position: %.0f, %.0f, %.0f", position.X, position.Y, position.Z))
+            end
+            for _, line in ipairs(attributeLines(boss)) do
+                table.insert(bossAttributes, line)
+            end
+        end
+
+        local spawnTime = tonumber(workspace:GetAttribute("BossSpawnNextTime"))
+        if spawnTime then
+            local remaining = math.max(0, spawnTime - workspace:GetServerTimeNow())
+            table.insert(info, string.format("Next spawn in: %dm %02ds", math.floor(remaining / 60), math.floor(remaining % 60)))
+        end
+
+        local fields = {
+            { name = "Boss", value = clip(table.concat(info, "\n"), 1000), inline = false },
+        }
+        if #bossAttributes > 0 then
+            table.insert(fields, { name = "Attributes", value = clip(table.concat(bossAttributes, "\n"), 1000), inline = false })
+        end
+        table.insert(fields, serverField())
+        table.insert(fields, joinField())
+
+        postWebhook({
+            title = "Boss spawned: " .. rarity,
+            color = 0x7C3AED,
+            fields = fields,
+            footer = { text = Config.HubName },
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+        })
+    end
+
+    local function notifyHalloweenBoss(name)
+        if not Webhook.enabled or not canSend("halloween_" .. name) then
+            return
+        end
+
+        task.wait(1)
+
+        local boss = workspace:FindFirstChild(name)
+        local label = halloweenGetHealthLabel(name)
+
+        local info = {
+            "Boss: **" .. name .. "**",
+            "Health: " .. (label and label.Text or "N/A"),
+        }
+
+        local extra = {}
+        if boss and boss:IsA("Model") then
+            local okBox, _, size = pcall(function()
+                return boss:GetBoundingBox()
+            end)
+            if okBox and size then
+                table.insert(info, string.format("Size: %.0f x %.0f x %.0f", size.X, size.Y, size.Z))
+            end
+            local okPivot, pivot = pcall(function()
+                return boss:GetPivot()
+            end)
+            if okPivot and pivot then
+                local position = pivot.Position
+                table.insert(info, string.format("Position: %.0f, %.0f, %.0f", position.X, position.Y, position.Z))
+            end
+            extra = attributeLines(boss)
+        end
+
+        local fields = {
+            { name = "Halloween boss", value = clip(table.concat(info, "\n"), 1000), inline = false },
+        }
+        if #extra > 0 then
+            table.insert(fields, { name = "Attributes", value = clip(table.concat(extra, "\n"), 1000), inline = false })
+        end
+        table.insert(fields, serverField())
+        table.insert(fields, joinField())
+
+        postWebhook({
+            title = "Halloween boss spawned: " .. name,
+            color = 0xF97316,
+            fields = fields,
+            footer = { text = Config.HubName },
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+        })
+    end
+
+    table.insert(connections, workspace:GetAttributeChangedSignal("BossActive"):Connect(function()
+        if workspace:GetAttribute("BossActive") == true then
+            task.spawn(notifyMainBoss)
+        end
+    end))
+
+    table.insert(connections, workspace.ChildAdded:Connect(function(child)
+        if HalloweenBossCache[child.Name] ~= nil then
+            task.spawn(notifyHalloweenBoss, child.Name)
+        end
+    end))
+
+    Farm:Section({ Title = L("bw_section") })
+
+    local WebhookInput = Farm:Input({
+        Title = L("bw_input"),
+        Placeholder = "https://discord.com/api/webhooks/...",
+        Value = "",
+        Callback = function(text)
+            local clean = tostring(text or ""):gsub("%s+", "")
+            Webhook.url = clean
+        end,
+    })
+    Util.register("boss_webhook_url", WebhookInput)
+
+    local WebhookToggle = Farm:Toggle({
+        Title = L("bw_toggle"),
+        Desc = L("bw_toggle_desc"),
+        Value = false,
+        Callback = function(state)
+            Webhook.enabled = state
+        end,
+    })
+    Util.register("boss_webhook", WebhookToggle)
+
+    Farm:Button({
+        Title = L("bw_test"),
+        Icon = "send",
+        Callback = function()
+            if not Logger.getRequest() then
+                Util.notify(L("bw_section"), L("bw_no_http"), "triangle-alert")
+                return
+            end
+            if not isValidWebhook(Webhook.url) then
+                Util.notify(L("bw_section"), L("bw_invalid"), "triangle-alert")
+                return
+            end
+
+            task.spawn(function()
+                local sent = postWebhook({
+                    title = "Webhook test",
+                    description = "Boss notifications are working.",
+                    color = 0x22C55E,
+                    fields = { serverField() },
+                    footer = { text = Config.HubName },
+                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                })
+                if sent then
+                    Util.notify(L("bw_section"), L("bw_test_ok"), "check")
+                else
+                    Util.notify(L("bw_section"), L("bw_test_fail"), "triangle-alert")
+                end
+            end)
+        end,
+    })
+
     task.spawn(function()
         while isAlive() do
             task.wait(1)
@@ -3307,6 +3692,9 @@ end
 
 do
     local Packs = Tabs.Packs
+
+    local REBIRTH_CYCLE = 6
+    local REBIRTH_TOLERANCE = 0.75
 
     local function remote(name)
         local events = ReplicatedStorage:FindFirstChild("rEvents")
@@ -3354,7 +3742,7 @@ do
     end
 
     local function formatRaw(n)
-        local text = tostring(math.floor(tonumber(n) or 0))
+        local text = string.format("%.0f", math.floor(tonumber(n) or 0))
         local sign = ""
         if text:sub(1, 1) == "-" then
             sign = "-"
@@ -3365,6 +3753,15 @@ do
         local result = reversed:reverse()
         result = result:gsub("^,", "")
         return sign .. result
+    end
+
+    local function formatBoth(n)
+        n = tonumber(n) or 0
+        local raw = formatRaw(n)
+        if math.abs(n) < 1000 then
+            return raw
+        end
+        return raw .. " [" .. formatNumber(n) .. "]"
     end
 
     local function formatDuration(seconds)
@@ -3509,6 +3906,7 @@ do
                 task.spawn(function()
                     while autoEgg and isAlive() do
                         pcall(eatProteinEgg)
+                        -- esperar 30 min, pero cortando si se apaga el toggle
                         for _ = 1, 1800 do
                             if not autoEgg or not isAlive() then
                                 break
@@ -3715,7 +4113,7 @@ do
 
     Packs:Divider()
 
-    local zeroStrength = rateList(0, formatNumber)
+    local zeroRates = rateList(0, formatBoth)
 
     local InfoParagraph = Packs:Paragraph({
         Title = L("pk_time_title"),
@@ -3724,24 +4122,14 @@ do
             .. L("pk_ping") .. ": 0 ms",
     })
 
-    local StrengthApproxParagraph = Packs:Paragraph({
-        Title = L("pk_str_approx"),
-        Desc = zeroStrength,
+    local StrengthParagraph = Packs:Paragraph({
+        Title = L("pk_str_calc"),
+        Desc = zeroRates,
     })
 
-    local DurabilityApproxParagraph = Packs:Paragraph({
-        Title = L("pk_dur_approx"),
-        Desc = zeroStrength,
-    })
-
-    local StrengthAverageParagraph = Packs:Paragraph({
-        Title = L("pk_str_avg"),
-        Desc = zeroStrength,
-    })
-
-    local DurabilityAverageParagraph = Packs:Paragraph({
-        Title = L("pk_dur_avg"),
-        Desc = zeroStrength,
+    local DurabilityParagraph = Packs:Paragraph({
+        Title = L("pk_dur_calc"),
+        Desc = zeroRates,
     })
 
     local TotalsParagraph = Packs:Paragraph({
@@ -3754,10 +4142,8 @@ do
 
     task.spawn(function()
         local lastCalc = os.clock()
-        local approxStrength = zeroStrength
-        local approxDurability = zeroStrength
-        local averageStrength = zeroStrength
-        local averageDurability = zeroStrength
+        local strengthRates = zeroRates
+        local durabilityRates = zeroRates
 
         local function render(elapsed, statusText, ping, strength, durability)
             setDesc(InfoParagraph, table.concat({
@@ -3766,17 +4152,15 @@ do
                 L("pk_ping") .. ": " .. ping .. " ms",
             }, "\n"))
 
-            setDesc(StrengthApproxParagraph, approxStrength)
-            setDesc(DurabilityApproxParagraph, approxDurability)
-            setDesc(StrengthAverageParagraph, averageStrength)
-            setDesc(DurabilityAverageParagraph, averageDurability)
+            setDesc(StrengthParagraph, strengthRates)
+            setDesc(DurabilityParagraph, durabilityRates)
 
             setDesc(TotalsParagraph, table.concat({
-                L("pk_strength") .. ": " .. formatNumber(strength),
-                L("pk_gained") .. ": " .. formatNumber(strength - track.initStrength),
+                L("pk_strength") .. ": " .. formatBoth(strength),
+                L("pk_gained") .. ": " .. formatBoth(strength - track.initStrength),
                 "",
-                L("pk_durability") .. ": " .. formatNumber(durability),
-                L("pk_gained") .. ": " .. formatNumber(durability - track.initDurability),
+                L("pk_durability") .. ": " .. formatBoth(durability),
+                L("pk_gained") .. ": " .. formatBoth(durability - track.initDurability),
             }, "\n"))
         end
 
@@ -3810,27 +4194,16 @@ do
                     local dh = track.durabilityHistory
 
                     if #sh >= 2 and sh[#sh].time > sh[1].time then
-                        approxStrength = rateList(
+                        strengthRates = rateList(
                             (sh[#sh].value - sh[1].value) / (sh[#sh].time - sh[1].time),
-                            formatNumber
+                            formatBoth
                         )
                     end
 
                     if #dh >= 2 and dh[#dh].time > dh[1].time then
-                        approxDurability = rateList(
+                        durabilityRates = rateList(
                             (dh[#dh].value - dh[1].value) / (dh[#dh].time - dh[1].time),
-                            formatNumber
-                        )
-                    end
-
-                    if elapsed > 0 then
-                        averageStrength = rateList(
-                            (strength - track.initStrength) / elapsed,
-                            formatNumber
-                        )
-                        averageDurability = rateList(
-                            (durability - track.initDurability) / elapsed,
-                            formatNumber
+                            formatBoth
                         )
                     end
                 end
@@ -3847,7 +4220,7 @@ do
     local RebirthFolder = Packs:Section({
         Title = L("pk_rebirth_section"),
         Icon = "repeat",
-        Opened = false,
+        Opened = true,
     })
 
     RebirthFolder:Paragraph({
@@ -3855,7 +4228,7 @@ do
         Desc = L("pk_important"),
     })
 
-    local zeroRebirths = rateList(0, formatRaw)
+    local zeroRebirths = rateList(0, formatBoth)
 
     local RebirthInfoParagraph = RebirthFolder:Paragraph({
         Title = L("pk_rebirth_title"),
@@ -3865,13 +4238,8 @@ do
             .. L("pk_status") .. ": " .. L("pk_inactive"),
     })
 
-    local RebirthApproxParagraph = RebirthFolder:Paragraph({
-        Title = L("pk_rb_approx"),
-        Desc = zeroRebirths,
-    })
-
-    local RebirthAverageParagraph = RebirthFolder:Paragraph({
-        Title = L("pk_rb_avg"),
+    local RebirthRateParagraph = RebirthFolder:Paragraph({
+        Title = L("pk_rb_calc"),
         Desc = zeroRebirths,
     })
 
@@ -3882,10 +4250,7 @@ do
         paused = 0,
         tracking = false,
         initial = 0,
-        lastUpdateTime = 0,
-        lastUpdateRebirths = 0,
-        averageStartedAt = 0,
-        averageStartRebirths = 0,
+        events = {},
     }
 
     local function renderRebirthInfo()
@@ -3900,8 +4265,8 @@ do
 
         setDesc(RebirthInfoParagraph, table.concat({
             L("pk_time") .. ": " .. formatDuration(elapsed),
-            L("pk_rebirths") .. ": " .. formatRaw(current),
-            L("pk_rebirths_gained") .. ": " .. formatRaw(current - rbTrack.initial),
+            L("pk_rebirths") .. ": " .. formatBoth(current),
+            L("pk_rebirths_gained") .. ": " .. formatBoth(current - rbTrack.initial),
             L("pk_status") .. ": " .. status,
         }, "\n"))
     end
@@ -3913,36 +4278,51 @@ do
         end
     end)
 
-    task.spawn(function()
-        while isAlive() do
-            task.wait(10)
-
-            if rbTrack.tracking then
-                local now = os.clock()
-                local current = getRebirths()
-
-                local intervalTime = now - rbTrack.lastUpdateTime
-                local intervalRebirths = current - rbTrack.lastUpdateRebirths
-                local approxPerSecond = 0
-                if intervalTime > 0 then
-                    approxPerSecond = math.max(0, intervalRebirths) / intervalTime
-                end
-
-                local averageTime = now - rbTrack.averageStartedAt
-                local averageRebirths = current - rbTrack.averageStartRebirths
-                local averagePerSecond = 0
-                if averageTime > 0 then
-                    averagePerSecond = math.max(0, averageRebirths) / averageTime
-                end
-
-                setDesc(RebirthApproxParagraph, rateList(approxPerSecond, formatRaw))
-                setDesc(RebirthAverageParagraph, rateList(averagePerSecond, formatRaw))
-
-                rbTrack.lastUpdateTime = now
-                rbTrack.lastUpdateRebirths = current
-            end
+    local function updateRebirthRate()
+        local events = rbTrack.events
+        if #events < 2 then
+            return
         end
-    end)
+
+        local first = events[1]
+        local last = events[#events]
+        local span = last.time - first.time
+        local gained = last.count - first.count
+
+        if span <= 0 or gained <= 0 then
+            return
+        end
+
+        local interval = span / gained
+        if math.abs(interval - REBIRTH_CYCLE) <= REBIRTH_TOLERANCE then
+            interval = REBIRTH_CYCLE
+        end
+
+        setDesc(RebirthRateParagraph, rateList(1 / interval, formatBoth))
+    end
+
+    local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+    local rebirthValue = leaderstats and leaderstats:FindFirstChild("Rebirths")
+
+    if rebirthValue then
+        local rebirthConnection = nil
+        rebirthConnection = rebirthValue:GetPropertyChangedSignal("Value"):Connect(function()
+            if not isAlive() then
+                rebirthConnection:Disconnect()
+                return
+            end
+            if not rbTrack.tracking then
+                return
+            end
+
+            table.insert(rbTrack.events, { time = os.clock(), count = tonumber(rebirthValue.Value) or 0 })
+            while #rbTrack.events > 10 do
+                table.remove(rbTrack.events, 1)
+            end
+
+            updateRebirthRate()
+        end)
+    end
 
     local function getStrengthRequiredForRebirth()
         local rebirths = getRebirths()
@@ -3975,8 +4355,7 @@ do
                 end
 
                 renderRebirthInfo()
-                setDesc(RebirthApproxParagraph, zeroRebirths)
-                setDesc(RebirthAverageParagraph, zeroRebirths)
+                setDesc(RebirthRateParagraph, zeroRebirths)
                 return
             end
 
@@ -3987,14 +4366,10 @@ do
             rbTrack.paused = 0
             rbTrack.tracking = true
             rbTrack.initial = current
-            rbTrack.lastUpdateTime = now
-            rbTrack.lastUpdateRebirths = current
-            rbTrack.averageStartedAt = now
-            rbTrack.averageStartRebirths = current
+            rbTrack.events = { { time = now, count = current } }
 
             renderRebirthInfo()
-            setDesc(RebirthApproxParagraph, zeroRebirths)
-            setDesc(RebirthAverageParagraph, zeroRebirths)
+            setDesc(RebirthRateParagraph, zeroRebirths)
 
             task.spawn(function()
                 while fastRebirth and isAlive() do
