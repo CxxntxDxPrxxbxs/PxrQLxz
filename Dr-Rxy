@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
 local UserInputService = game:GetService("UserInputService")
 local RbxAnalyticsService = game:GetService("RbxAnalyticsService")
+local CollectionService = game:GetService("CollectionService")
 
 if not game:IsLoaded() then
     game.Loaded:Wait()
@@ -119,6 +120,117 @@ local Strings = {
         cb_gunesp_desc = "Highlights the dropped gun on the map",
         cb_gundist = "Gun ESP Distance",
         cb_gundist_desc = "Shows how far the dropped gun is from you",
+        cb_autogun = "Auto Grab Gun",
+        cb_autogun_desc = "Grabs the dropped gun the moment it appears, then returns you",
+        cb_grabgun = "Grab Gun Now",
+        cb_grabgun_desc = "One-off grab of the dropped gun",
+        cb_gun_grabbed = "Grabbed the Sheriff gun",
+        cb_gun_have = "You already have a gun",
+        cb_gun_none = "No dropped gun on the map",
+        cb_murderer_section = "Murderer",
+        cb_knifewalls = "Knife Through Walls",
+        cb_knifewalls_desc = "Your thrown knives ignore walls. Aims at the closest player inside the FOV, or at the point under your crosshair",
+        cb_knifewalls_nohook = "Your executor doesn't support hookmetamethod. Knife Through Walls will only apply to Instant Knife Throw.",
+        cb_instantknife = "Instant Knife Throw",
+        cb_instantknife_desc = "Skips the wind up and the flight time so the knife lands at once",
+
+        ex_movement_section = "Movement",
+        ex_fly = "Fly",
+        ex_fly_desc = "Free movement in any direction relative to your camera. Space goes up and Left Ctrl goes down (on-screen buttons on mobile). Stays on after you respawn",
+        ex_flyspeed = "Fly Speed",
+        ex_noclip = "Noclip",
+        ex_noclip_desc = "Walk through walls. Stays on after you respawn",
+        ex_infjump = "Infinite Jump",
+        ex_infjump_desc = "Jump again any time, including mid-air",
+        ex_unlockcam = "Unlock Camera",
+        ex_unlockcam_desc = "Removes the zoom limit. With Noclip on, the camera also passes through walls",
+        ex_character_section = "Character",
+        ex_reset = "Reset Character",
+        ex_reset_desc = "Kills you so you respawn",
+        ex_reset_nochar = "You have no character right now",
+        ex_walkspeed = "Walk Speed",
+        ex_walkspeed_desc = "Sets how fast you run. The default is 16. Stays on after you respawn",
+        ex_walkvalue = "Walk Speed Value",
+        ex_jumppower = "Jump Power",
+        ex_jumppower_desc = "Raises how high you jump. The default is 50. Stays on after you respawn",
+        ex_jumpvalue = "Jump Power Value",
+        ex_external_section = "External Scripts",
+        ex_external_fail = "The script failed to load.",
+        ex_server_section = "Server",
+        ex_server_joining = "Joining a server with %s players...",
+        ex_server_none = "No available server found.",
+        ex_server_autoreconnect = "Auto Reconnect",
+        ex_server_autoreconnect_desc = "Rejoins the same server when an error message appears",
+        ex_server_autoreconnect_auto = "Auto Reconnect (Kick/Disconnect)",
+        ex_server_autoreconnect_auto_desc = "Rejoins when you get disconnected or the error prompt shows up",
+        ex_server_hop_low = "Server Hop (Low)",
+        ex_server_hop_low_desc = "Joins the public server with the fewest players",
+        ex_server_hop_full = "Server Hop (Full)",
+        ex_server_hop_full_desc = "Joins the public server with the most players that still has room",
+        ex_server_rejoin = "Rejoin Server",
+        vs_world_section = "World",
+        vs_coinesp = "Coin ESP",
+        vs_coinesp_desc = "Highlights every uncollected coin on the map",
+        vs_killfeed = "Kill Feed",
+        vs_killfeed_desc = "Notifies you of every elimination, in any role including innocent",
+        vs_killfeed_title = "Kill Feed",
+        vs_eliminated = "Eliminated",
+
+        vs_esp_section = "Player ESP",
+        vs_nametag = "Nametag ESP",
+        vs_nametag_desc = "Name, distance and round coins above each player",
+        vs_box = "Box ESP",
+        vs_box_desc = "2D rectangle around each player that tracks their pose",
+        vs_box3d = "3D Box ESP",
+        vs_box3d_desc = "Draws a box around each player in world space",
+        vs_chams = "Chams",
+        vs_chams_desc = "Colored through-wall outline on each player",
+        vs_fill = "Fill Body",
+        vs_fill_desc = "Fills the Chams with color",
+        vs_roletags = "Role Tags",
+        vs_roletags_desc = "Colors every ESP by role and shows [M] [S] [I] tags",
+        vs_avatar = "Avatar Icons",
+        vs_avatar_desc = "Shows each player's headshot on their nametag",
+        vs_tracers = "Tracers",
+        vs_tracers_desc = "Draws a line from your chosen origin to each player",
+        vs_origin = "Tracer Origin",
+        vs_distlimit = "ESP Distance Limit",
+        vs_distlimit_desc = "Hides nametags and tracers past a set range. Off shows every player",
+        vs_maxdist = "Max Distance",
+        vs_skeleton = "Skeleton ESP",
+        vs_skeleton_desc = "Draws bone lines over each player",
+
+        pm_actions_section = "Player Actions",
+        pm_target = "Target",
+        pm_target_desc = "The player used by Teleport, Fling and Loop Fling",
+        pm_nobody = "(nobody else here)",
+        pm_tp = "Teleport To Player",
+        pm_tp_desc = "Drops you just above the selected player",
+        pm_fling = "Fling Player",
+        pm_fling_desc = "Launches the selected player using physics. You return to where you were",
+        pm_loopfling = "Loop Fling",
+        pm_loopfling_desc = "Keeps flinging the selected player, waiting for them to land before going again",
+        pm_flingall = "Fling All Players",
+        pm_flingall_desc = "Flings everyone in the server one after another, then puts you back",
+        pm_auto_murderer = "Auto Fling Murderer",
+        pm_auto_murderer_desc = "Flings the murderer on sight, over and over, while this is on",
+        pm_auto_sheriff = "Auto Fling Sheriff",
+        pm_auto_sheriff_desc = "Flings whoever holds the gun, sheriff or hero, while this is on",
+        pm_power = "Fling Power",
+        pm_duration = "Fling Duration",
+        pm_pick = "Pick a player first.",
+        pm_nochar = "You have no character right now.",
+        pm_tp_dead = "%s is dead, no character to teleport to.",
+        pm_tp_ok = "Teleported to %s",
+        pm_fling_dead = "%s is dead, nothing to fling.",
+        pm_flinging = "Flinging %s",
+        pm_flung_n = "Flung %s players.",
+        pm_err_busy = "Already flinging someone.",
+        pm_err_nochar = "They have no character right now.",
+        pm_err_far = "They are too far above or below you.",
+        pm_err_flying = "They are already flying, wait for them to land.",
+        pm_err_grip = "Could not get a grip on them, try again.",
+        pm_noclaim = "Your executor has no sethiddenproperty, so Fling will land less often.",
 
         set_appearance = "Appearance",
         set_theme = "Theme",
@@ -231,6 +343,117 @@ local Strings = {
         cb_gunesp_desc = "Resalta el arma caída en el mapa",
         cb_gundist = "Gun ESP Distance",
         cb_gundist_desc = "Muestra a cuántos studs está el arma caída",
+        cb_autogun = "Auto Grab Gun",
+        cb_autogun_desc = "Agarra el arma caída apenas aparece y luego te regresa",
+        cb_grabgun = "Grab Gun Now",
+        cb_grabgun_desc = "Agarra el arma caída una sola vez",
+        cb_gun_grabbed = "Agarraste el arma del Sheriff",
+        cb_gun_have = "Ya tienes un arma",
+        cb_gun_none = "No hay arma caída en el mapa",
+        cb_murderer_section = "Murderer",
+        cb_knifewalls = "Knife Through Walls",
+        cb_knifewalls_desc = "Tus cuchillos lanzados ignoran las paredes. Apunta al jugador más cercano dentro del FOV, o al punto bajo tu mira",
+        cb_knifewalls_nohook = "Tu executor no soporta hookmetamethod. Knife Through Walls solo se aplicará a Instant Knife Throw.",
+        cb_instantknife = "Instant Knife Throw",
+        cb_instantknife_desc = "Salta la espera y el tiempo de vuelo para que el cuchillo llegue al instante",
+
+        ex_movement_section = "Movimiento",
+        ex_fly = "Fly",
+        ex_fly_desc = "Movimiento libre en cualquier dirección según tu cámara. Space sube y Left Ctrl baja (botones en pantalla en móvil). Sigue activo al reaparecer",
+        ex_flyspeed = "Velocidad de Fly",
+        ex_noclip = "Noclip",
+        ex_noclip_desc = "Atraviesa las paredes. Sigue activo al reaparecer",
+        ex_infjump = "Infinite Jump",
+        ex_infjump_desc = "Salta de nuevo en cualquier momento, incluso en el aire",
+        ex_unlockcam = "Unlock Camera",
+        ex_unlockcam_desc = "Quita el límite de zoom. Con Noclip activo, la cámara también atraviesa las paredes",
+        ex_character_section = "Personaje",
+        ex_reset = "Reset Character",
+        ex_reset_desc = "Te mata para que reaparezcas",
+        ex_reset_nochar = "No tienes personaje en este momento",
+        ex_walkspeed = "Walk Speed",
+        ex_walkspeed_desc = "Define qué tan rápido corres. El valor por defecto es 16. Sigue activo al reaparecer",
+        ex_walkvalue = "Valor de Walk Speed",
+        ex_jumppower = "Jump Power",
+        ex_jumppower_desc = "Aumenta qué tan alto saltas. El valor por defecto es 50. Sigue activo al reaparecer",
+        ex_jumpvalue = "Valor de Jump Power",
+        ex_external_section = "Scripts externos",
+        ex_external_fail = "No se pudo cargar el script.",
+        ex_server_section = "Servidor",
+        ex_server_joining = "Entrando a un servidor con %s jugadores...",
+        ex_server_none = "No se encontró un servidor disponible.",
+        ex_server_autoreconnect = "Auto Reconnect",
+        ex_server_autoreconnect_desc = "Reentra al mismo servidor cuando aparece un mensaje de error",
+        ex_server_autoreconnect_auto = "Auto Reconnect (Kick/Desconexión)",
+        ex_server_autoreconnect_auto_desc = "Reentra cuando te desconectan o aparece el aviso de error",
+        ex_server_hop_low = "Server Hop (Pocos)",
+        ex_server_hop_low_desc = "Entra al servidor público con menos jugadores",
+        ex_server_hop_full = "Server Hop (Llenos)",
+        ex_server_hop_full_desc = "Entra al servidor público con más jugadores que todavía tenga espacio",
+        ex_server_rejoin = "Reentrar al servidor",
+
+        vs_esp_section = "ESP de Jugadores",
+        vs_nametag = "Nametag ESP",
+        vs_nametag_desc = "Nombre, distancia y monedas de la ronda sobre cada jugador",
+        vs_box = "Box ESP",
+        vs_box_desc = "Rectángulo 2D alrededor de cada jugador que sigue su pose",
+        vs_box3d = "3D Box ESP",
+        vs_box3d_desc = "Dibuja una caja alrededor de cada jugador en el mundo",
+        vs_chams = "Chams",
+        vs_chams_desc = "Contorno de color a través de paredes en cada jugador",
+        vs_fill = "Rellenar cuerpo",
+        vs_fill_desc = "Rellena los Chams con color",
+        vs_roletags = "Role Tags",
+        vs_roletags_desc = "Colorea todos los ESP por rol y muestra las etiquetas [M] [S] [I]",
+        vs_avatar = "Avatar Icons",
+        vs_avatar_desc = "Muestra la foto de cada jugador en su nametag",
+        vs_tracers = "Tracers",
+        vs_tracers_desc = "Dibuja una línea desde el origen que elijas hasta cada jugador",
+        vs_origin = "Origen de Tracers",
+        vs_distlimit = "Límite de distancia ESP",
+        vs_distlimit_desc = "Oculta nametags y tracers más allá de cierto rango. Apagado muestra a todos",
+        vs_maxdist = "Distancia máxima",
+        vs_skeleton = "Skeleton ESP",
+        vs_skeleton_desc = "Dibuja las líneas de huesos sobre cada jugador",
+        vs_world_section = "Mundo",
+        vs_coinesp = "Coin ESP",
+        vs_coinesp_desc = "Resalta cada moneda sin recoger en el mapa",
+        vs_killfeed = "Kill Feed",
+        vs_killfeed_desc = "Te avisa de cada eliminación, en cualquier rol, incluso inocentes",
+        vs_killfeed_title = "Kill Feed",
+        vs_eliminated = "Eliminado",
+
+        pm_actions_section = "Acciones sobre jugadores",
+        pm_target = "Objetivo",
+        pm_target_desc = "El jugador que usan Teleport, Fling y Loop Fling",
+        pm_nobody = "(no hay nadie más)",
+        pm_tp = "Teleport To Player",
+        pm_tp_desc = "Te deja justo encima del jugador seleccionado",
+        pm_fling = "Fling Player",
+        pm_fling_desc = "Lanza al jugador seleccionado con físicas. Regresas a donde estabas",
+        pm_loopfling = "Loop Fling",
+        pm_loopfling_desc = "Sigue lanzando al jugador seleccionado, esperando a que aterrice antes de repetir",
+        pm_flingall = "Fling All Players",
+        pm_flingall_desc = "Lanza a todos en el servidor uno tras otro y luego te regresa",
+        pm_auto_murderer = "Auto Fling Murderer",
+        pm_auto_murderer_desc = "Lanza al murderer apenas lo ve, una y otra vez, mientras esté activo",
+        pm_auto_sheriff = "Auto Fling Sheriff",
+        pm_auto_sheriff_desc = "Lanza a quien tenga el arma, sheriff o hero, mientras esté activo",
+        pm_power = "Fuerza del Fling",
+        pm_duration = "Duración del Fling",
+        pm_pick = "Elige un jugador primero.",
+        pm_nochar = "No tienes personaje en este momento.",
+        pm_tp_dead = "%s está muerto, no hay personaje al que ir.",
+        pm_tp_ok = "Teletransportado a %s",
+        pm_fling_dead = "%s está muerto, no hay nada que lanzar.",
+        pm_flinging = "Lanzando a %s",
+        pm_flung_n = "Lanzaste a %s jugadores.",
+        pm_err_busy = "Ya estás lanzando a alguien.",
+        pm_err_nochar = "No tiene personaje en este momento.",
+        pm_err_far = "Está muy arriba o muy abajo de ti.",
+        pm_err_flying = "Ya está volando, espera a que aterrice.",
+        pm_err_grip = "No pude agarrarlo, intenta de nuevo.",
+        pm_noclaim = "Tu executor no tiene sethiddenproperty, el Fling acertará menos.",
 
         set_appearance = "Apariencia",
         set_theme = "Tema",
@@ -1311,6 +1534,9 @@ do
     local silentHooked = false
     local gunWalls = false
     local gunWallsGen = 0
+    local knifeWalls = false
+    local instantKnife = false
+    local patchKnifeThrow
 
     local FovGui = Instance.new("ScreenGui")
     FovGui.Name = HttpService:GenerateGUID(false)
@@ -1341,7 +1567,12 @@ do
     local rayParams = RaycastParams.new()
     rayParams.FilterType = Enum.RaycastFilterType.Exclude
 
+    local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+
     local function aimCenter(camera)
+        if isMobile then
+            return camera.ViewportSize / 2
+        end
         if UserInputService.MouseEnabled then
             return UserInputService:GetMouseLocation()
         end
@@ -1349,7 +1580,7 @@ do
     end
 
     local function isHolding()
-        if not UserInputService.MouseEnabled then
+        if isMobile then
             return true
         end
         return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
@@ -1508,7 +1739,7 @@ do
         oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
             local method = getnamecallmethod()
 
-            if (silentAim or gunWalls)
+            if (silentAim or gunWalls or knifeWalls)
                 and isAlive()
                 and (method == "InvokeServer" or method == "FireServer")
                 and typeof(self) == "Instance"
@@ -1516,6 +1747,14 @@ do
 
                 local matched, isKnife = isSilentRemote(self)
                 if matched then
+                    if isKnife and knifeWalls and patchKnifeThrow then
+                        local args = table.pack(...)
+                        local ok, patched = pcall(patchKnifeThrow, args)
+                        if ok and patched then
+                            return oldNamecall(self, table.unpack(args, 1, args.n))
+                        end
+                    end
+
                     local wantWalls = gunWalls and not isKnife
                     if wantWalls or silentAim then
                         local ok, part = pcall(silentTarget, wantWalls)
@@ -1639,7 +1878,7 @@ do
         end
 
         local center = aimCenter(camera)
-        local active = aimbot or silentAim or gunWalls
+        local active = aimbot or silentAim or gunWalls or knifeWalls
         local part = (aimbot or silentAim) and getAimTarget(camera, center, false) or nil
         local wallPart = gunWalls and getAimTarget(camera, center, true) or nil
 
@@ -1738,10 +1977,9 @@ do
         end
 
         if scan then
-            for _, object in ipairs(workspace:GetDescendants()) do
-                if object:IsA("BasePart") and object.Name == "GunDrop" then
-                    found[object] = true
-                end
+            local object = workspace:FindFirstChild("GunDrop", true)
+            if object and object:IsA("BasePart") then
+                found[object] = true
             end
         end
 
@@ -1822,18 +2060,3051 @@ do
         end,
     })
     Util.register("gun_esp_distance", GunDistanceToggle)
+
+    local autoGun = false
+    local autoGunGen = 0
+    local grabbing = false
+    local droppedGun = nil
+    local gunConnections = {}
+
+    local function findDroppedGun()
+        if droppedGun and droppedGun.Parent then
+            return droppedGun
+        end
+        local object = workspace:FindFirstChild("GunDrop", true)
+        if object and object:IsA("BasePart") then
+            droppedGun = object
+            return object
+        end
+        droppedGun = nil
+        return nil
+    end
+
+    local function canAct()
+        local character = LocalPlayer.Character
+        local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+        if not humanoid or humanoid.Health <= 0 then
+            return false
+        end
+        if not getRoot(LocalPlayer) then
+            return false
+        end
+        return not isDead(LocalPlayer)
+    end
+
+    local function touchGun(part)
+        local root = getRoot(LocalPlayer)
+        if not (root and part and part.Parent) then
+            return false
+        end
+
+        if typeof(firetouchinterest) == "function" then
+            pcall(function()
+                for _ = 1, 4 do
+                    firetouchinterest(root, part, 0)
+                    firetouchinterest(root, part, 1)
+                end
+            end)
+        end
+
+        return findWeapon("Gun") ~= nil
+    end
+
+    local function grabGunOnce(target)
+        if grabbing then
+            return false
+        end
+
+        local part = target or findDroppedGun()
+        local root = getRoot(LocalPlayer)
+        if not (part and part.Parent and root and canAct()) then
+            return false
+        end
+
+        grabbing = true
+
+        if touchGun(part) then
+            Util.notify(L("cb_grabgun"), L("cb_gun_grabbed"), "check")
+            grabbing = false
+            return true
+        end
+
+        local back = root.CFrame
+
+        for _ = 1, 10 do
+            local currentRoot = getRoot(LocalPlayer)
+            if not (currentRoot and part.Parent) then
+                break
+            end
+            if not canAct() then
+                break
+            end
+
+            currentRoot.CFrame = CFrame.new(part.Position)
+            currentRoot.AssemblyLinearVelocity = Vector3.zero
+
+            if touchGun(part) then
+                break
+            end
+            RunService.Heartbeat:Wait()
+        end
+
+        local finalRoot = getRoot(LocalPlayer)
+        if finalRoot then
+            finalRoot.CFrame = back
+            finalRoot.AssemblyLinearVelocity = Vector3.zero
+        end
+
+        local got = findWeapon("Gun") ~= nil
+        if got then
+            Util.notify(L("cb_grabgun"), L("cb_gun_grabbed"), "check")
+        end
+
+        grabbing = false
+        return got
+    end
+
+    local function shouldAutoGrab()
+        if not (autoGun and isAlive()) or grabbing then
+            return false
+        end
+        pcall(refreshRoles)
+        return myRole() ~= "Murderer" and not findWeapon("Gun") and canAct()
+    end
+
+    local function onGunAppeared(object)
+        if not (object and object:IsA("BasePart") and object:IsDescendantOf(workspace)) then
+            return
+        end
+        droppedGun = object
+        if shouldAutoGrab() then
+            task.spawn(grabGunOnce, object)
+        end
+    end
+
+    pcall(function()
+        table.insert(gunConnections, CollectionService:GetInstanceAddedSignal("GunDrop"):Connect(onGunAppeared))
+        table.insert(gunConnections, CollectionService:GetInstanceRemovedSignal("GunDrop"):Connect(function(object)
+            if droppedGun == object then
+                droppedGun = nil
+            end
+        end))
+    end)
+
+    table.insert(gunConnections, workspace.DescendantAdded:Connect(function(object)
+        if object.Name == "GunDrop" then
+            task.defer(onGunAppeared, object)
+        end
+    end))
+
+    local AutoGunToggle = Combat:Toggle({
+        Title = L("cb_autogun"),
+        Desc = L("cb_autogun_desc"),
+        Value = false,
+        Callback = function(state)
+            autoGun = state
+            autoGunGen = autoGunGen + 1
+            local gen = autoGunGen
+
+            if not state then
+                return
+            end
+
+            task.spawn(function()
+                local lastScan = 0
+                while autoGun and isAlive() and autoGunGen == gen do
+                    pcall(function()
+                        local gun = droppedGun and droppedGun.Parent and droppedGun or nil
+                        if not gun and os.clock() - lastScan >= 3 then
+                            lastScan = os.clock()
+                            gun = findDroppedGun()
+                        end
+                        if gun and shouldAutoGrab() then
+                            grabGunOnce(gun)
+                        end
+                    end)
+                    task.wait(0.5)
+                end
+            end)
+        end,
+    })
+    Util.register("auto_grab_gun", AutoGunToggle)
+
+    Combat:Button({
+        Title = L("cb_grabgun"),
+        Desc = L("cb_grabgun_desc"),
+        Icon = "hand",
+        Callback = function()
+            if findWeapon("Gun") then
+                Util.notify(L("cb_grabgun"), L("cb_gun_have"), "triangle-alert")
+                return
+            end
+            if not findDroppedGun() then
+                Util.notify(L("cb_grabgun"), L("cb_gun_none"), "triangle-alert")
+                return
+            end
+            task.spawn(grabGunOnce)
+        end,
+    })
+
+    task.spawn(function()
+        while isAlive() do
+            task.wait(1)
+        end
+        autoGun = false
+        autoGunGen = autoGunGen + 1
+        for _, connection in ipairs(gunConnections) do
+            pcall(function() connection:Disconnect() end)
+        end
+    end)
+
+        Combat:Section({ Title = L("cb_murderer_section") })
+
+    local KNIFE_BACKOFF = 4
+    local instantFiredAt = 0
+    local knifeLoopRunning = false
+    local knifeConnections = {}
+    local knifeRayParams = RaycastParams.new()
+    knifeRayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+    local function mapPoint(camera, center)
+        local ray = camera:ViewportPointToRay(center.X, center.Y)
+        knifeRayParams.FilterDescendantsInstances = { LocalPlayer.Character }
+        local hit = workspace:Raycast(ray.Origin, ray.Direction * 1000, knifeRayParams)
+        return hit and hit.Position or (ray.Origin + ray.Direction * 1000)
+    end
+
+    local function closestPlayerPart(camera, center, needVisible)
+        local bestPart, bestDistance = nil, aimFov
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and not isDead(player) then
+                local character = player.Character
+                local part = character and (character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Head"))
+                if part then
+                    local screen, onScreen = camera:WorldToViewportPoint(part.Position)
+                    if onScreen then
+                        local distance = (Vector2.new(screen.X, screen.Y) - center).Magnitude
+                        if distance <= bestDistance and (not needVisible or isVisible(camera, part)) then
+                            bestPart = part
+                            bestDistance = distance
+                        end
+                    end
+                end
+            end
+        end
+
+        return bestPart
+    end
+
+    local function resolveKnifeTarget(instant)
+        local camera = workspace.CurrentCamera
+        local myRoot = getRoot(LocalPlayer)
+        if not (camera and myRoot) then
+            return nil
+        end
+        local center = aimCenter(camera)
+
+        if silentAim or knifeWalls then
+            local part = closestPlayerPart(camera, center, not knifeWalls)
+            if part then
+                local lead = instant and 0.05
+                    or math.clamp((myRoot.Position - part.Position).Magnitude / 80, 0.05, 0.4)
+                return part.Position + part.AssemblyLinearVelocity * lead
+            end
+        end
+
+        return mapPoint(camera, center)
+    end
+
+    local function knifeOrigin(root, target)
+        local direction = target - root.Position
+        direction = direction.Magnitude > 0.1 and direction.Unit or Vector3.new(0, 0, -1)
+        return CFrame.lookAt(target - direction * KNIFE_BACKOFF, target)
+    end
+
+    patchKnifeThrow = function(args)
+        local root = getRoot(LocalPlayer)
+        local target = resolveKnifeTarget(false)
+        if not (root and target) then
+            return false
+        end
+        args[1] = knifeOrigin(root, target)
+        args[2] = CFrame.new(target)
+        return true
+    end
+
+    local function throwKnifeNow()
+        local root = getRoot(LocalPlayer)
+        if not (instantKnife and isAlive() and root) or isDead(LocalPlayer) then
+            return false
+        end
+
+        local knife = findWeapon("Knife")
+        if not knife then
+            return false
+        end
+        if knife.Parent ~= LocalPlayer.Character then
+            equip(knife)
+            knife = findWeapon("Knife") or knife
+        end
+
+        local events = knife:FindFirstChild("Events")
+        local thrown = events and events:FindFirstChild("KnifeThrown")
+        if not thrown or knife:GetAttribute("Disabled") == true then
+            return false
+        end
+
+        local cooldown = 2 * (tonumber(knife:GetAttribute("ThrowSpeed")) or 1)
+        if os.clock() - instantFiredAt < cooldown then
+            return false
+        end
+
+        local target = resolveKnifeTarget(true)
+        if not target then
+            return false
+        end
+
+        instantFiredAt = os.clock()
+
+        local handle = knife:FindFirstChild("Handle")
+        local origin
+        if knifeWalls or not handle then
+            origin = knifeOrigin(root, target)
+        else
+            origin = handle.CFrame
+        end
+
+        pcall(function()
+            thrown:FireServer(origin, CFrame.new(target))
+        end)
+        return true
+    end
+
+    local function startKnifeLoop()
+        if knifeLoopRunning then
+            return
+        end
+        knifeLoopRunning = true
+
+        task.spawn(function()
+            while (knifeWalls or instantKnife) and isAlive() do
+                pcall(refreshRoles)
+                task.wait(1)
+            end
+            knifeLoopRunning = false
+        end)
+    end
+
+    table.insert(knifeConnections, UserInputService.InputBegan:Connect(function(input, processed)
+        if processed or not instantKnife or not isAlive() then
+            return
+        end
+        if input.UserInputType == Enum.UserInputType.MouseButton2 then
+            task.spawn(throwKnifeNow)
+        end
+    end))
+
+    task.spawn(function()
+        local ok, action = pcall(function()
+            local inputContext = LocalPlayer:WaitForChild("PlayerGui", 10):WaitForChild("InputContext", 10)
+            return inputContext:WaitForChild("GameplayContext", 10):WaitForChild("Throw", 10)
+        end)
+
+        if ok and action and isAlive() then
+            pcall(function()
+                table.insert(knifeConnections, action.Pressed:Connect(function()
+                    if instantKnife and isAlive() then
+                        task.spawn(throwKnifeNow)
+                    end
+                end))
+            end)
+        end
+    end)
+
+    local KnifeWallsToggle = Combat:Toggle({
+        Title = L("cb_knifewalls"),
+        Desc = L("cb_knifewalls_desc"),
+        Value = false,
+        Callback = function(state)
+            knifeWalls = state
+            if not state then
+                return
+            end
+
+            if not installSilentHook() then
+                Util.notify(L("cb_knifewalls"), L("cb_knifewalls_nohook"), "triangle-alert")
+            end
+            startKnifeLoop()
+        end,
+    })
+    Util.register("knife_walls", KnifeWallsToggle)
+
+    local InstantKnifeToggle = Combat:Toggle({
+        Title = L("cb_instantknife"),
+        Desc = L("cb_instantknife_desc"),
+        Value = false,
+        Callback = function(state)
+            instantKnife = state
+            if state then
+                startKnifeLoop()
+            end
+        end,
+    })
+    Util.register("instant_knife", InstantKnifeToggle)
+
+    task.spawn(function()
+        while isAlive() do
+            task.wait(1)
+        end
+        knifeWalls = false
+        instantKnife = false
+        for _, connection in ipairs(knifeConnections) do
+            pcall(function() connection:Disconnect() end)
+        end
+    end)
 end
 
 do
     local Extras = Tabs.Extras
+
+    local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+
+    local flyEnabled = false
+    local noclipEnabled = false
+    local infJumpEnabled = false
+    local unlockCamEnabled = false
+    local flySpeed = 60
+
+    local connections = {}
+    local lastJumpAt = -10
+    local mobileUp, mobileDown = false, false
+
+    local controls
+    local cameraModule
+
+    local flyBV, flyBG
+    local flyVelocity = Vector3.zero
+
+    local function getHumanoid()
+        local character = LocalPlayer.Character
+        return character and character:FindFirstChildOfClass("Humanoid")
+    end
+
+    local function getRootPart()
+        local character = LocalPlayer.Character
+        return character and character:FindFirstChild("HumanoidRootPart")
+    end
+
+    local function isCharAlive()
+        local humanoid = getHumanoid()
+        return humanoid ~= nil and humanoid.Health > 0 and getRootPart() ~= nil
+    end
+
+    task.spawn(function()
+        pcall(function()
+            local scripts = LocalPlayer:WaitForChild("PlayerScripts", 10)
+            local module = scripts and scripts:WaitForChild("PlayerModule", 10)
+            if module then
+                local playerModule = require(module)
+                controls = playerModule:GetControls()
+                cameraModule = playerModule:GetCameras()
+            end
+        end)
+    end)
+
+    local function destroyFlyObjects()
+        if flyBV then
+            flyBV:Destroy()
+            flyBV = nil
+        end
+        if flyBG then
+            flyBG:Destroy()
+            flyBG = nil
+        end
+        flyVelocity = Vector3.zero
+    end
+
+    local function attachFly()
+        local root = getRootPart()
+        local humanoid = getHumanoid()
+        if not (root and humanoid) then
+            return false
+        end
+
+        destroyFlyObjects()
+
+        flyBV = Instance.new("BodyVelocity")
+        flyBV.Name = HttpService:GenerateGUID(false)
+        flyBV.MaxForce = Vector3.one * 9e9
+        flyBV.P = 9e4
+        flyBV.Velocity = Vector3.zero
+        flyBV.Parent = root
+
+        flyBG = Instance.new("BodyGyro")
+        flyBG.Name = HttpService:GenerateGUID(false)
+        flyBG.MaxTorque = Vector3.one * 9e9
+        flyBG.P = 9e4
+        flyBG.CFrame = root.CFrame
+        flyBG.Parent = root
+
+        humanoid.PlatformStand = true
+        return true
+    end
+
+    local function detachFly()
+        destroyFlyObjects()
+        local humanoid = getHumanoid()
+        if humanoid then
+            humanoid.PlatformStand = false
+        end
+    end
+
+    local MobileGui = Instance.new("ScreenGui")
+    MobileGui.Name = HttpService:GenerateGUID(false)
+    MobileGui.ResetOnSpawn = false
+    MobileGui.DisplayOrder = 998
+    MobileGui.Enabled = false
+    MobileGui.Parent = (gethui and gethui()) or game:GetService("CoreGui")
+
+    local function makeFlyButton(text, yOffset, onChange)
+        local button = Instance.new("TextButton")
+        button.Name = HttpService:GenerateGUID(false)
+        button.AnchorPoint = Vector2.new(1, 0.5)
+        button.Position = UDim2.new(1, -20, 0.5, yOffset)
+        button.Size = UDim2.fromOffset(52, 52)
+        button.BackgroundColor3 = Color3.fromRGB(76, 29, 149)
+        button.BackgroundTransparency = 0.25
+        button.AutoButtonColor = false
+        button.Text = text
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.Font = Enum.Font.GothamBold
+        button.TextSize = 22
+        button.Parent = MobileGui
+
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 12)
+        corner.Parent = button
+
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Color3.fromRGB(167, 139, 250)
+        stroke.Thickness = 1.5
+        stroke.Parent = button
+
+        button.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Touch
+                or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                onChange(true)
+            end
+        end)
+        button.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Touch
+                or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                onChange(false)
+            end
+        end)
+    end
+
+    makeFlyButton("▲", -34, function(held) mobileUp = held end)
+    makeFlyButton("▼", 34, function(held) mobileDown = held end)
+
+    table.insert(connections, RunService.RenderStepped:Connect(function(dt)
+        if not flyEnabled then
+            return
+        end
+
+        if not isCharAlive() then
+            if flyBV or flyBG then
+                destroyFlyObjects()
+            end
+            return
+        end
+
+        local camera = workspace.CurrentCamera
+        local root = getRootPart()
+        local humanoid = getHumanoid()
+        if not (camera and root and humanoid) then
+            return
+        end
+
+        if not flyBV or flyBV.Parent ~= root or not flyBG or flyBG.Parent ~= root then
+            if not attachFly() then
+                return
+            end
+        end
+        if not humanoid.PlatformStand then
+            humanoid.PlatformStand = true
+        end
+
+        local camCF = camera.CFrame
+        local dir = Vector3.zero
+        local move = controls and controls:GetMoveVector() or Vector3.zero
+
+        if move.Magnitude > 0 then
+            dir = camCF.LookVector * -move.Z + camCF.RightVector * move.X
+        elseif not controls then
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + camCF.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - camCF.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + camCF.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - camCF.RightVector end
+        end
+
+        local vertical = 0
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space)
+                or mobileUp
+                or os.clock() - lastJumpAt < 0.25 then
+                vertical = vertical + 1
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or mobileDown then
+                vertical = vertical - 1
+            end
+            dir = dir + Vector3.new(0, vertical, 0)
+
+        local target = dir.Magnitude > 0 and dir.Unit * flySpeed or Vector3.zero
+
+        flyVelocity = flyVelocity:Lerp(target, math.clamp(dt * 12, 0, 1))
+        flyBV.Velocity = flyVelocity
+        flyBG.CFrame = camCF
+    end))
+
+    local charParts, charPartsFor = {}, nil
+    local charPartsConn
+    local unclipped = {}
+
+    local function refreshCharParts(character)
+        if charPartsConn then
+            charPartsConn:Disconnect()
+            charPartsConn = nil
+        end
+
+        charParts = {}
+        charPartsFor = character
+        table.clear(unclipped)
+
+        if not character then
+            return
+        end
+
+        for _, descendant in ipairs(character:GetDescendants()) do
+            if descendant:IsA("BasePart") then
+                charParts[#charParts + 1] = descendant
+            end
+        end
+
+        charPartsConn = character.DescendantAdded:Connect(function(descendant)
+            if charPartsFor == character and descendant:IsA("BasePart") then
+                charParts[#charParts + 1] = descendant
+            end
+        end)
+    end
+
+    local function restoreCollisions()
+        for part in pairs(unclipped) do
+            if part.Parent then
+                part.CanCollide = true
+            end
+        end
+        table.clear(unclipped)
+    end
+
+    table.insert(connections, RunService.Stepped:Connect(function()
+        if not noclipEnabled then
+            if next(unclipped) then
+                restoreCollisions()
+            end
+            return
+        end
+
+        local character = LocalPlayer.Character
+        if not character then
+            return
+        end
+        if character ~= charPartsFor then
+            refreshCharParts(character)
+        end
+
+        for _, part in ipairs(charParts) do
+            if part.Parent and part.CanCollide then
+                part.CanCollide = false
+                unclipped[part] = true
+            end
+        end
+    end))
+
+    table.insert(connections, UserInputService.JumpRequest:Connect(function()
+        lastJumpAt = os.clock()
+
+        if infJumpEnabled and not flyEnabled then
+            local humanoid = getHumanoid()
+            if humanoid and humanoid.Health > 0 then
+                humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end
+    end))
+
+    local originalMaxZoom = LocalPlayer.CameraMaxZoomDistance
+    local hookedOcclusion, originalOcclusionUpdate
+    local cameraThroughWalls = false
+
+    local function setCameraThroughWalls(on)
+        if cameraThroughWalls == on then
+            return
+        end
+
+        if on then
+            local occlusion = cameraModule and cameraModule.activeOcclusionModule
+            if not (occlusion and occlusion.Update) then
+                return
+            end
+            hookedOcclusion = occlusion
+            originalOcclusionUpdate = occlusion.Update
+            occlusion.Update = function(_, _, desiredCF, desiredFocus)
+                return desiredCF, desiredFocus
+            end
+        elseif hookedOcclusion then
+            hookedOcclusion.Update = originalOcclusionUpdate
+            hookedOcclusion = nil
+            originalOcclusionUpdate = nil
+        end
+
+        cameraThroughWalls = on
+    end
+
+    table.insert(connections, RunService.Heartbeat:Connect(function()
+        if unlockCamEnabled and LocalPlayer.CameraMaxZoomDistance < 9999 then
+            pcall(function()
+                LocalPlayer.CameraMaxZoomDistance = 10000
+            end)
+        end
+        pcall(setCameraThroughWalls, unlockCamEnabled and noclipEnabled)
+    end))
+
+    Extras:Section({ Title = L("ex_movement_section") })
+
+    local FlyToggle = Extras:Toggle({
+        Title = L("ex_fly"),
+        Desc = L("ex_fly_desc"),
+        Value = false,
+        Callback = function(state)
+            flyEnabled = state
+            mobileUp, mobileDown = false, false
+            MobileGui.Enabled = state and isMobile
+
+            if state then
+                pcall(attachFly)
+            else
+                detachFly()
+            end
+        end,
+    })
+    Util.register("fly", FlyToggle)
+
+    local FlySpeedSlider = Extras:Slider({
+        Title = L("ex_flyspeed"),
+        Step = 1,
+        Value = { Min = 20, Max = 250, Default = 60 },
+        Callback = function(value)
+            flySpeed = tonumber(value) or flySpeed
+        end,
+    })
+    Util.register("fly_speed", FlySpeedSlider)
+
+    local NoclipToggle = Extras:Toggle({
+        Title = L("ex_noclip"),
+        Desc = L("ex_noclip_desc"),
+        Value = false,
+        Callback = function(state)
+            noclipEnabled = state
+        end,
+    })
+    Util.register("noclip", NoclipToggle)
+
+    local InfJumpToggle = Extras:Toggle({
+        Title = L("ex_infjump"),
+        Desc = L("ex_infjump_desc"),
+        Value = false,
+        Callback = function(state)
+            infJumpEnabled = state
+        end,
+    })
+    Util.register("infinite_jump", InfJumpToggle)
+
+    local UnlockCamToggle = Extras:Toggle({
+        Title = L("ex_unlockcam"),
+        Desc = L("ex_unlockcam_desc"),
+        Value = false,
+        Callback = function(state)
+            unlockCamEnabled = state
+            if not state then
+                pcall(function()
+                    LocalPlayer.CameraMaxZoomDistance = originalMaxZoom
+                end)
+            end
+        end,
+    })
+    Util.register("unlock_camera", UnlockCamToggle)
+
+    task.spawn(function()
+        while isAlive() do
+            task.wait(1)
+        end
+
+        flyEnabled = false
+        noclipEnabled = false
+        infJumpEnabled = false
+        unlockCamEnabled = false
+
+        for _, connection in ipairs(connections) do
+            pcall(function() connection:Disconnect() end)
+        end
+        if charPartsConn then
+            pcall(function() charPartsConn:Disconnect() end)
+        end
+
+        pcall(detachFly)
+        pcall(restoreCollisions)
+        pcall(setCameraThroughWalls, false)
+        pcall(function()
+            LocalPlayer.CameraMaxZoomDistance = originalMaxZoom
+        end)
+        pcall(function() MobileGui:Destroy() end)
+    end)
+
+    Extras:Section({ Title = L("ex_character_section") })
+
+    local DEFAULT_WALK = 16
+    local DEFAULT_JUMP = 50
+
+    local walkEnabled = false
+    local walkValue = DEFAULT_WALK
+    local jumpEnabled = false
+    local jumpValue = DEFAULT_JUMP
+
+    table.insert(connections, RunService.Heartbeat:Connect(function()
+        if not (walkEnabled or jumpEnabled) then
+            return
+        end
+
+        local humanoid = getHumanoid()
+        if not humanoid then
+            return
+        end
+
+        if walkEnabled and humanoid.WalkSpeed ~= walkValue then
+            humanoid.WalkSpeed = walkValue
+        end
+
+        if jumpEnabled then
+            if not humanoid.UseJumpPower then
+                humanoid.UseJumpPower = true
+            end
+            if humanoid.JumpPower ~= jumpValue then
+                humanoid.JumpPower = jumpValue
+            end
+        end
+    end))
+
+    Extras:Button({
+        Title = L("ex_reset"),
+        Desc = L("ex_reset_desc"),
+        Icon = "skull",
+        Callback = function()
+            local humanoid = getHumanoid()
+            if humanoid then
+                humanoid.Health = 0
+            else
+                Util.notify(L("ex_reset"), L("ex_reset_nochar"), "triangle-alert")
+            end
+        end,
+    })
+
+    local WalkToggle = Extras:Toggle({
+        Title = L("ex_walkspeed"),
+        Desc = L("ex_walkspeed_desc"),
+        Value = false,
+        Callback = function(state)
+            walkEnabled = state
+            if not state then
+                local humanoid = getHumanoid()
+                if humanoid then
+                    humanoid.WalkSpeed = DEFAULT_WALK
+                end
+            end
+        end,
+    })
+    Util.register("walk_speed", WalkToggle)
+
+    local WalkSlider = Extras:Slider({
+        Title = L("ex_walkvalue"),
+        Step = 1,
+        Value = { Min = 16, Max = 120, Default = 16 },
+        Callback = function(value)
+            walkValue = tonumber(value) or walkValue
+        end,
+    })
+    Util.register("walk_speed_value", WalkSlider)
+
+    local JumpToggle = Extras:Toggle({
+        Title = L("ex_jumppower"),
+        Desc = L("ex_jumppower_desc"),
+        Value = false,
+        Callback = function(state)
+            jumpEnabled = state
+            if not state then
+                local humanoid = getHumanoid()
+                if humanoid then
+                    humanoid.UseJumpPower = true
+                    humanoid.JumpPower = DEFAULT_JUMP
+                end
+            end
+        end,
+    })
+    Util.register("jump_power", JumpToggle)
+
+    local JumpSlider = Extras:Slider({
+        Title = L("ex_jumpvalue"),
+        Step = 1,
+        Value = { Min = 50, Max = 250, Default = 50 },
+        Callback = function(value)
+            jumpValue = tonumber(value) or jumpValue
+        end,
+    })
+    Util.register("jump_power_value", JumpSlider)
+
+    task.spawn(function()
+        while isAlive() do
+            task.wait(1)
+        end
+        walkEnabled = false
+        jumpEnabled = false
+        pcall(function()
+            local humanoid = getHumanoid()
+            if humanoid then
+                humanoid.WalkSpeed = DEFAULT_WALK
+                humanoid.UseJumpPower = true
+                humanoid.JumpPower = DEFAULT_JUMP
+            end
+        end)
+    end)
+
+    Extras:Section({ Title = L("ex_external_section") })
+
+    local function runExternal(url)
+        task.spawn(function()
+            local ok = pcall(function()
+                loadstring(game:HttpGet(url))()
+            end)
+            if not ok then
+                Util.notify(L("error"), L("ex_external_fail"), "triangle-alert")
+            end
+        end)
+    end
+
+    Extras:Button({
+        Title = "Infinite Yield",
+        Icon = "terminal",
+        Callback = function()
+            runExternal("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source")
+        end,
+    })
+
+    Extras:Button({
+        Title = "Permanent Shiftlock",
+        Icon = "lock",
+        Callback = function()
+            runExternal("https://pastebin.com/raw/CjNsnSDy")
+        end,
+    })
+
+    Extras:Button({
+        Title = "All Emotes",
+        Icon = "smile",
+        Callback = function()
+            runExternal("https://raw.githubusercontent.com/7yd7/Hub/refs/heads/Branch/GUIS/Emotes.lua")
+        end,
+    })
+
+    Extras:Section({ Title = L("ex_server_section") })
+
+    local GuiService = game:GetService("GuiService")
+    local CoreGui = game:GetService("CoreGui")
+
+    local ServerSys = {
+       autoReconnect = false,
+        autoReconnectAuto = false,
+        errorConn = nil,
+        ancestryConn = nil,
+        promptConn = nil,
+        lastTeleport = 0,
+        hopping = false,
+    }
+
+   local function rejoinSameServer()
+        if os.clock() - ServerSys.lastTeleport < 3 then
+            return
+        end
+        ServerSys.lastTeleport = os.clock()
+
+        local ok = pcall(function()
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+       end)
+        if not ok then
+            pcall(function()
+                TeleportService:Teleport(game.PlaceId, LocalPlayer)
+            end)
+        end
+    end
+
+    local function serverHop(descending)
+        if ServerSys.hopping then
+            return
+        end
+        ServerSys.hopping = true
+
+        task.spawn(function()
+            local ok, result = pcall(function()
+                local url = "https://games.roblox.com/v1/games/" .. game.PlaceId
+                    .. "/servers/Public?sortOrder=" .. (descending and "Desc" or "Asc")
+                    .. "&limit=100"
+                return HttpService:JSONDecode(game:HttpGet(url))
+            end)
+
+            local best = nil
+            if ok and type(result) == "table" and type(result.data) == "table" then
+                for _, server in ipairs(result.data) do
+                    local playing = tonumber(server.playing)
+                    local maxPlayers = tonumber(server.maxPlayers)
+
+                    if server.id ~= game.JobId and playing and maxPlayers and playing < maxPlayers then
+                        if not best
+                            or (descending and playing > best.playing)
+                            or (not descending and playing < best.playing) then
+                            best = { id = server.id, playing = playing }
+                        end
+                    end
+                end
+            end
+
+            if best then
+                Util.notify(L("ex_server_section"), L("ex_server_joining", best.playing), "server")
+                pcall(function()
+                    TeleportService:TeleportToPlaceInstance(game.PlaceId, best.id, LocalPlayer)
+                end)
+            else
+                Util.notify(L("ex_server_section"), L("ex_server_none"), "triangle-alert")
+            end
+
+            task.wait(3)
+            ServerSys.hopping = false
+        end)
+    end
+
+    local AutoReconnectToggle = Extras:Toggle({
+        Title = L("ex_server_autoreconnect"),
+        Desc = L("ex_server_autoreconnect_desc"),
+        Value = false,
+        Callback = function(state)
+            ServerSys.autoReconnect = state
+
+            if state then
+                if not ServerSys.errorConn then
+                    ServerSys.errorConn = GuiService.ErrorMessageChanged:Connect(function()
+                        if ServerSys.autoReconnect and isAlive() then
+                            rejoinSameServer()
+                        end
+                    end)
+                end
+            elseif ServerSys.errorConn then
+                ServerSys.errorConn:Disconnect()
+                ServerSys.errorConn = nil
+            end
+        end,
+    })
+    Util.register("server_auto_reconnect", AutoReconnectToggle)
+
+    local AutoReconnectAutoToggle = Extras:Toggle({
+        Title = L("ex_server_autoreconnect_auto"),
+        Desc = L("ex_server_autoreconnect_auto_desc"),
+        Value = false,
+        Callback = function(state)
+            ServerSys.autoReconnectAuto = state
+
+            if state then
+               if not ServerSys.ancestryConn then
+                    ServerSys.ancestryConn = LocalPlayer.AncestryChanged:Connect(function(_, parent)
+                        if not parent and ServerSys.autoReconnectAuto then
+                            rejoinSameServer()
+                        end
+                    end)
+                end
+
+                if not ServerSys.promptConn then
+                    task.spawn(function()
+                        local gui = CoreGui:WaitForChild("RobloxPromptGui", 5)
+                        local overlay = gui and gui:WaitForChild("promptOverlay", 5)
+                        if overlay and ServerSys.autoReconnectAuto and not ServerSys.promptConn then
+                            ServerSys.promptConn = overlay.ChildAdded:Connect(function(child)
+                                if child.Name == "ErrorPrompt" and ServerSys.autoReconnectAuto and isAlive() then
+                                    rejoinSameServer()
+                                end
+                            end)
+                        end
+                    end)
+                end
+            else
+                if ServerSys.ancestryConn then
+                    ServerSys.ancestryConn:Disconnect()
+                    ServerSys.ancestryConn = nil
+                end
+                if ServerSys.promptConn then
+                    ServerSys.promptConn:Disconnect()
+                    ServerSys.promptConn = nil
+                end
+            end
+        end,
+    })
+    Util.register("server_auto_reconnect_auto", AutoReconnectAutoToggle)
+
+    Extras:Button({
+        Title = L("ex_server_hop_low"),
+        Desc = L("ex_server_hop_low_desc"),
+        Icon = "arrow-down",
+        Callback = function()
+            serverHop(false)
+        end,
+    })
+
+    Extras:Button({
+        Title = L("ex_server_hop_full"),
+        Desc = L("ex_server_hop_full_desc"),
+        Icon = "arrow-up",
+        Callback = function()
+            serverHop(true)
+        end,
+    })
+
+    Extras:Button({
+        Title = L("ex_server_rejoin"),
+        Icon = "refresh-cw",
+        Callback = function()
+            rejoinSameServer()
+        end,
+    })
+
+    task.spawn(function()
+        while isAlive() do
+            task.wait(1)
+        end
+        ServerSys.autoReconnect = false
+        ServerSys.autoReconnectAuto = false
+        for _, key in ipairs({ "errorConn", "ancestryConn", "promptConn" }) do
+            if ServerSys[key] then
+                ServerSys[key]:Disconnect()
+                ServerSys[key] = nil
+            end
+        end
+    end)
 end
 
 do
     local Visual = Tabs.Visual
+
+    local TextService = game:GetService("TextService")
+
+    local flags = {
+        names = false,
+        box = false,
+        box3d = false,
+        chams = false,
+        fill = false,
+        roleTags = false,
+        avatar = false,
+        tracers = false,
+        skeleton = false,
+        maxDist = 0,
+        tracerFrom = "Bottom",
+    }
+    local distLimit = 250
+    local connections = {}
+
+    local function make(class, props, parent)
+        local obj = Instance.new(class)
+        obj.Name = HttpService:GenerateGUID(false)
+        for key, value in pairs(props) do
+            obj[key] = value
+        end
+        obj.Parent = parent
+        return obj
+    end
+
+    local EspGui = make("ScreenGui", {
+        ResetOnSpawn = false,
+        IgnoreGuiInset = true,
+        DisplayOrder = 998,
+    }, (gethui and gethui()) or game:GetService("CoreGui"))
+
+    local roleData = nil
+    local roleStamp = 0
+
+    local function refreshRoles()
+        if os.clock() - roleStamp < 1 then
+            return
+        end
+        roleStamp = os.clock()
+        pcall(function()
+            local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+            local extras = remotes and remotes:FindFirstChild("Extras")
+            local getData = extras and extras:FindFirstChild("GetPlayerData")
+            if getData then
+                local data = getData:InvokeServer()
+                if type(data) == "table" then
+                    roleData = data
+                end
+            end
+        end)
+    end
+
+    local function roleOf(player)
+        local entry = roleData and roleData[player.Name]
+        if type(entry) == "table" and entry.Role then
+            return entry.Role
+        end
+        local backpack = player:FindFirstChildOfClass("Backpack")
+        for _, container in ipairs({ player.Character, backpack }) do
+            if container then
+                if container:FindFirstChild("Knife") then
+                    return "Murderer"
+                end
+                if container:FindFirstChild("Gun") then
+                    return "Sheriff"
+                end
+            end
+        end
+        return nil
+    end
+
+    local function espRole(player)
+        local entry = roleData and roleData[player.Name]
+        if type(entry) == "table" and (entry.Dead == true or entry.Killed == true) then
+            return "Innocent"
+        end
+        return roleOf(player)
+    end
+
+    local function isGunRole(role)
+        return role == "Sheriff" or role == "Hero"
+    end
+
+    local function espColor(role)
+        if not flags.roleTags then
+            return Color3.fromRGB(214, 214, 220)
+        end
+        if role == "Murderer" then
+            return Color3.fromRGB(255, 80, 80)
+        elseif isGunRole(role) then
+            return Color3.fromRGB(90, 150, 255)
+        end
+        return Color3.fromRGB(95, 225, 125)
+    end
+
+    local function tagOf(role)
+        if role == "Murderer" then
+            return "[M]"
+        elseif isGunRole(role) then
+            return "[S]"
+        end
+        return "[I]"
+    end
+
+    local function hasBody(player)
+        local character = player.Character
+        if not character then
+            return nil
+        end
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        local root = character:FindFirstChild("HumanoidRootPart")
+        if not (humanoid and root) or humanoid.Health <= 0 then
+            return nil
+        end
+        return character, humanoid, root
+    end
+
+    local hasDrawing = false
+    if Drawing ~= nil then
+        hasDrawing = pcall(function()
+            local probe = Drawing.new("Line")
+            probe:Remove()
+        end)
+    end
+
+    local drawn = {}
+    local lineMeta = {}
+
+    local function applyFrameLine(line)
+        local frame = rawget(line, "_f")
+        if not (frame and frame.Parent) then
+            return
+        end
+        local a, b = rawget(line, "_From"), rawget(line, "_To")
+        if not (a and b) then
+            return
+        end
+        local d = b - a
+        frame.Position = UDim2.fromOffset((a.X + b.X) * 0.5, (a.Y + b.Y) * 0.5)
+        frame.Size = UDim2.fromOffset(math.max(d.Magnitude, 1), math.max(rawget(line, "_Thickness") or 1, 1))
+        frame.Rotation = math.deg(math.atan2(d.Y, d.X))
+    end
+
+    lineMeta.__index = function(t, key)
+        if key == "Remove" then
+            return function(self)
+                local frame = rawget(self, "_f")
+                if frame then
+                    pcall(function() frame:Destroy() end)
+                end
+            end
+        end
+        return rawget(t, "_" .. key)
+    end
+
+    lineMeta.__newindex = function(t, key, value)
+        rawset(t, "_" .. key, value)
+        local frame = rawget(t, "_f")
+        if not (frame and frame.Parent) then
+            return
+        end
+        if key == "Visible" then
+            frame.Visible = (value == true)
+        elseif key == "Color" then
+            frame.BackgroundColor3 = value
+        elseif key == "From" or key == "To" or key == "Thickness" then
+            applyFrameLine(t)
+        end
+    end
+
+    local function newLine(thickness)
+        if hasDrawing then
+            local line = Drawing.new("Line")
+            line.Thickness = thickness
+            line.Transparency = 1
+            line.Visible = false
+            drawn[line] = true
+            return line
+        end
+
+        local line = setmetatable({}, lineMeta)
+        local frame = make("Frame", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            BorderSizePixel = 0,
+            BackgroundColor3 = Color3.new(1, 1, 1),
+            Visible = false,
+            ZIndex = 3,
+        }, EspGui)
+        rawset(line, "_f", frame)
+        rawset(line, "_Thickness", thickness)
+        rawset(line, "_Visible", false)
+        drawn[line] = true
+        return line
+    end
+
+    local function dropLine(line)
+        if line == nil then
+            return
+        end
+        drawn[line] = nil
+        pcall(function() line:Remove() end)
+    end
+
+    local nameHidden = setmetatable({}, { __mode = "k" })
+
+    local function setRobloxNames(hide)
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    if hide then
+                        if nameHidden[humanoid] == nil then
+                            nameHidden[humanoid] = {
+                                humanoid.DisplayDistanceType,
+                                humanoid.HealthDisplayDistance,
+                                humanoid.NameDisplayDistance,
+                            }
+                        end
+                        if humanoid.DisplayDistanceType ~= Enum.HumanoidDisplayDistanceType.None then
+                            humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+                        end
+                    else
+                        local original = nameHidden[humanoid]
+                        if original then
+                            pcall(function()
+                                humanoid.DisplayDistanceType = original[1]
+                                humanoid.HealthDisplayDistance = original[2]
+                                humanoid.NameDisplayDistance = original[3]
+                            end)
+                            nameHidden[humanoid] = nil
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    local espStore = {}
+
+    local function clearEsp(player)
+        local e = espStore[player]
+        if not e then
+            return
+        end
+        if e.hl then e.hl:Destroy() end
+        if e.bb then e.bb:Destroy() end
+        espStore[player] = nil
+    end
+
+    local function ensureEsp(player)
+        local e = espStore[player]
+        if e then
+            return e
+        end
+        e = {}
+
+        e.hl = make("Highlight", {
+            FillTransparency = 1,
+            OutlineTransparency = 0,
+            Enabled = false,
+            DepthMode = Enum.HighlightDepthMode.AlwaysOnTop,
+        }, EspGui)
+
+        e.bb = make("BillboardGui", {
+            Size = UDim2.fromOffset(198, 40),
+            AlwaysOnTop = true,
+            Enabled = false,
+            StudsOffsetWorldSpace = Vector3.new(0, 3.2, 0),
+        }, EspGui)
+
+        e.scale = make("UIScale", { Scale = 1 }, e.bb)
+
+        e.card = make("Frame", {
+            AnchorPoint = Vector2.new(0.5, 1),
+            Position = UDim2.fromScale(0.5, 1),
+            Size = UDim2.fromOffset(198, 32),
+            BackgroundColor3 = Color3.fromRGB(16, 16, 18),
+            BackgroundTransparency = 0.2,
+            BorderSizePixel = 0,
+        }, e.bb)
+        make("UICorner", { CornerRadius = UDim.new(0, 10) }, e.card)
+
+        e.edge = make("UIStroke", {
+            Color = Color3.fromRGB(255, 255, 255),
+            Thickness = 1,
+            Transparency = 0.75,
+            ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+        }, e.card)
+
+        e.avatar = make("ImageLabel", {
+            AnchorPoint = Vector2.new(0, 0.5),
+            Position = UDim2.new(0, 8, 0.5, 0),
+            Size = UDim2.fromOffset(22, 22),
+            BackgroundColor3 = Color3.fromRGB(38, 38, 44),
+            BackgroundTransparency = 0.25,
+            ScaleType = Enum.ScaleType.Fit,
+            Image = "",
+            Visible = false,
+        }, e.card)
+        make("UICorner", { CornerRadius = UDim.new(0, 6) }, e.avatar)
+
+        e.name = make("TextLabel", {
+            BackgroundTransparency = 1,
+            AnchorPoint = Vector2.new(0, 0.5),
+            Position = UDim2.new(0, 12, 0.5, 0),
+            Size = UDim2.new(1, -116, 0, 15),
+            Font = Enum.Font.GothamBold,
+            TextSize = 13,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Text = "",
+            TextColor3 = Color3.fromRGB(255, 255, 255),
+        }, e.card)
+
+        e.sub = make("TextLabel", {
+            BackgroundTransparency = 1,
+            AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -10, 0.5, 0),
+            Size = UDim2.fromOffset(74, 14),
+            Font = Enum.Font.Gotham,
+            TextSize = 11,
+            TextXAlignment = Enum.TextXAlignment.Right,
+            Text = "",
+            TextColor3 = Color3.fromRGB(176, 176, 188),
+        }, e.card)
+
+        espStore[player] = e
+        return e
+    end
+
+    local function updateNametag(e, player, character, root, role, col, dist)
+        e.bb.Enabled = true
+        e.bb.Adornee = character:FindFirstChild("Head") or root
+
+        local nm = player.Name
+        if flags.roleTags then
+            nm = tagOf(role) .. "  " .. nm
+        end
+
+        local sub = dist .. "m"
+        local entry = roleData and roleData[player.Name]
+        if type(entry) == "table" and entry.Coins then
+            sub = entry.Coins .. "c  ·  " .. sub
+        end
+
+        if e._nm ~= nm then
+            e._nm = nm
+            e.name.Text = nm
+            e._nw = nil
+        end
+        if e._sub ~= sub then
+            e._sub = sub
+            e.sub.Text = sub
+        end
+        if e._col ~= col then
+            e._col = col
+            e.name.TextColor3 = col
+            e.edge.Color = col
+        end
+
+        local t = math.clamp((dist - 18) / (220 - 18), 0, 1)
+        local dim = t * 0.55
+        if e._dim ~= dim then
+            e._dim = dim
+            e.scale.Scale = 1 - (t * 0.45)
+            e.card.BackgroundTransparency = 0.2 + dim * 0.5
+            e.edge.Transparency = 0.75 + dim * 0.2
+            e.name.TextTransparency = dim
+            e.sub.TextTransparency = math.min(1, dim * 1.25)
+            e.avatar.ImageTransparency = dim
+        end
+
+        local wantAvatar = flags.avatar
+        if e._av ~= wantAvatar then
+            e._av = wantAvatar
+            e.avatar.Visible = wantAvatar
+            e.name.Position = UDim2.new(0, wantAvatar and 36 or 12, 0.5, 0)
+            e._nw = nil
+        end
+
+        local key = nm .. sub .. tostring(wantAvatar)
+        if e._nw ~= key then
+            e._nw = key
+            local okN, nz = pcall(function()
+                return TextService:GetTextSize(nm, e.name.TextSize, e.name.Font, Vector2.new(4000, 40))
+            end)
+            local okS, sz = pcall(function()
+                return TextService:GetTextSize(sub, e.sub.TextSize, e.sub.Font, Vector2.new(4000, 40))
+            end)
+            local nw = okN and nz.X or (#nm * 8)
+            local sw = okS and sz.X or (#sub * 6)
+            local left = wantAvatar and 36 or 12
+            local width = math.clamp(math.ceil(left + nw + 14 + sw + 10), 150, 520)
+            e.name.Size = UDim2.fromOffset(math.ceil(nw) + 2, 15)
+            e.sub.Size = UDim2.fromOffset(math.ceil(sw) + 2, 14)
+            e.card.Size = UDim2.fromOffset(width, 32)
+            e.bb.Size = UDim2.fromOffset(width, 40)
+        end
+
+        if wantAvatar and e.avatar.Image == "" and os.clock() - (e._avAt or -99) > 4 then
+            e._avAt = os.clock()
+            local userId = player.UserId
+            task.spawn(function()
+                local ok, url = pcall(function()
+                    return Players:GetUserThumbnailAsync(
+                        userId,
+                        Enum.ThumbnailType.HeadShot,
+                        Enum.ThumbnailSize.Size48x48
+                    )
+                end)
+                if ok and url and e.avatar and e.avatar.Parent then
+                    e.avatar.Image = url
+                end
+            end)
+        end
+    end
+
+    local lastNameSync = 0
+
+    task.spawn(function()
+        while isAlive() do
+            local anyEsp = flags.chams or flags.names
+
+            if not anyEsp then
+                if next(espStore) then
+                    for player in pairs(espStore) do
+                        clearEsp(player)
+                    end
+                end
+                if next(nameHidden) then
+                    setRobloxNames(false)
+                end
+                task.wait(0.5)
+            else
+                if os.clock() - lastNameSync > 0.5 then
+                    lastNameSync = os.clock()
+                    pcall(setRobloxNames, flags.names)
+                end
+
+                local camera = workspace.CurrentCamera
+                if camera then
+                    local camPos = camera.CFrame.Position
+                    for _, player in ipairs(Players:GetPlayers()) do
+                        if player ~= LocalPlayer then
+                            local character, _, root = hasBody(player)
+                            if character then
+                                local e = ensureEsp(player)
+                                local role = espRole(player)
+                                local col = espColor(role)
+
+                                if e._ch ~= flags.chams then
+                                    e._ch = flags.chams
+                                    e.hl.Enabled = flags.chams
+                                end
+                                if flags.chams then
+                                    if e.hl.Adornee ~= character then
+                                        e.hl.Adornee = character
+                                    end
+                                    local fill = flags.fill and 0.6 or 1
+                                    if e._hlCol ~= col then
+                                        e._hlCol = col
+                                        e.hl.OutlineColor = col
+                                        e.hl.FillColor = col
+                                    end
+                                    if e._hlFill ~= fill then
+                                        e._hlFill = fill
+                                        e.hl.FillTransparency = fill
+                                    end
+                                end
+
+                                local dist = math.floor((root.Position - camPos).Magnitude)
+                                local inRange = flags.maxDist <= 0 or dist <= flags.maxDist
+
+                                if flags.names and inRange then
+                                    updateNametag(e, player, character, root, role, col, dist)
+                                else
+                                    e.bb.Enabled = false
+                                end
+                            else
+                                clearEsp(player)
+                            end
+                        end
+                    end
+                end
+                task.wait(0.05)
+            end
+        end
+    end)
+
+    task.spawn(function()
+        while isAlive() do
+            if flags.names or flags.chams or flags.roleTags or flags.box or flags.box3d
+                or flags.tracers or flags.skeleton then
+                pcall(refreshRoles)
+            end
+            task.wait(1)
+        end
+    end)
+
+    local boxStore, box3Store, tracerStore, skelStore = {}, {}, {}, {}
+
+    local function clearBox(player)
+        local b = boxStore[player]
+        if b then
+            for _, line in ipairs(b) do dropLine(line) end
+            boxStore[player] = nil
+        end
+    end
+
+    local function ensureBox(player)
+        local b = boxStore[player]
+        if b then
+            return b
+        end
+        b = {}
+        for i = 1, 4 do
+            b[i] = newLine(1)
+        end
+        boxStore[player] = b
+        return b
+    end
+
+    local function clearBox3(player)
+        local b = box3Store[player]
+        if b then
+            for _, line in ipairs(b) do dropLine(line) end
+            box3Store[player] = nil
+        end
+    end
+
+    local function ensureBox3(player)
+        local b = box3Store[player]
+        if b then
+            return b
+        end
+        b = {}
+        for i = 1, 12 do
+            b[i] = newLine(1)
+        end
+        box3Store[player] = b
+        return b
+    end
+
+    local function clearTracer(player)
+        local t = tracerStore[player]
+        if t then
+            dropLine(t)
+            tracerStore[player] = nil
+        end
+    end
+
+    local function ensureTracer(player)
+        local t = tracerStore[player]
+        if t then
+            return t
+        end
+        t = newLine(2)
+        tracerStore[player] = t
+        return t
+    end
+
+    local R15Bones = {
+        { "Head", "UpperTorso" }, { "UpperTorso", "LowerTorso" },
+        { "UpperTorso", "LeftUpperArm" }, { "LeftUpperArm", "LeftLowerArm" }, { "LeftLowerArm", "LeftHand" },
+        { "UpperTorso", "RightUpperArm" }, { "RightUpperArm", "RightLowerArm" }, { "RightLowerArm", "RightHand" },
+        { "LowerTorso", "LeftUpperLeg" }, { "LeftUpperLeg", "LeftLowerLeg" }, { "LeftLowerLeg", "LeftFoot" },
+        { "LowerTorso", "RightUpperLeg" }, { "RightUpperLeg", "RightLowerLeg" }, { "RightLowerLeg", "RightFoot" },
+    }
+    local R6Bones = {
+        { "Head", "Torso" }, { "Torso", "Left Arm" }, { "Torso", "Right Arm" },
+        { "Torso", "Left Leg" }, { "Torso", "Right Leg" },
+    }
+
+    local function clearSkel(player)
+        local s = skelStore[player]
+        if not s then
+            return
+        end
+        for _, line in ipairs(s.lines) do dropLine(line) end
+        skelStore[player] = nil
+    end
+
+    local function ensureSkel(player, character)
+        local bones = character:FindFirstChild("UpperTorso") and R15Bones or R6Bones
+        local s = skelStore[player]
+        if s and s.bones == bones and s.char == character then
+            return s
+        end
+        if s then
+            clearSkel(player)
+        end
+
+        s = { bones = bones, lines = {}, char = character, uniq = {}, pair = {}, vx = {}, vy = {}, vok = {} }
+        local index = {}
+        for i = 1, #bones do
+            s.lines[i] = newLine(2)
+            local joints = {}
+            for k = 1, 2 do
+                local part = character:FindFirstChild(bones[i][k])
+                local j = nil
+                if part then
+                    j = index[part]
+                    if not j then
+                        s.uniq[#s.uniq + 1] = part
+                        j = #s.uniq
+                        index[part] = j
+                    end
+                end
+                joints[k] = j
+            end
+            s.pair[i] = { joints[1], joints[2] }
+        end
+        skelStore[player] = s
+        return s
+    end
+
+    local CORNERS = {
+        Vector3.new(-1, -1, -1), Vector3.new(-1, -1, 1), Vector3.new(-1, 1, -1), Vector3.new(-1, 1, 1),
+        Vector3.new(1, -1, -1), Vector3.new(1, -1, 1), Vector3.new(1, 1, -1), Vector3.new(1, 1, 1),
+    }
+    local BOX3_EDGES = {
+        { 1, 2 }, { 1, 3 }, { 1, 5 }, { 2, 4 }, { 2, 6 }, { 3, 4 },
+        { 3, 7 }, { 4, 8 }, { 5, 6 }, { 5, 7 }, { 6, 8 }, { 7, 8 },
+    }
+
+    local bodyCache = setmetatable({}, { __mode = "k" })
+    local boundsCache = setmetatable({}, { __mode = "k" })
+
+    local function bodyParts(character)
+        local entry = bodyCache[character]
+        if not entry then
+            entry = { dirty = true, list = {} }
+            bodyCache[character] = entry
+            local function soil()
+                entry.dirty = true
+            end
+            character.ChildAdded:Connect(soil)
+            character.ChildRemoved:Connect(soil)
+        end
+        if entry.dirty then
+            table.clear(entry.list)
+            for _, child in ipairs(character:GetChildren()) do
+                if child:IsA("BasePart") then
+                    entry.list[#entry.list + 1] = child
+                end
+            end
+            entry.dirty = false
+        end
+        return entry.list
+    end
+
+    local function charBounds(character)
+        local root = character:FindFirstChild("HumanoidRootPart")
+        if not root then
+            return nil
+        end
+        local base = root.CFrame
+        local minX, minY, minZ = math.huge, math.huge, math.huge
+        local maxX, maxY, maxZ = -math.huge, -math.huge, -math.huge
+        local found = false
+
+        local body = bodyParts(character)
+        for i = 1, #body do
+            local part = body[i]
+            if part.Parent then
+                local rel = base:PointToObjectSpace(part.Position)
+                local h = part.Size * 0.5
+                local r = math.max(h.X, h.Y, h.Z)
+                if rel.X - h.X < minX then minX = rel.X - h.X end
+                if rel.X + h.X > maxX then maxX = rel.X + h.X end
+                if rel.Y - h.Y < minY then minY = rel.Y - h.Y end
+                if rel.Y + h.Y > maxY then maxY = rel.Y + h.Y end
+                if rel.Z - r < minZ then minZ = rel.Z - r end
+                if rel.Z + r > maxZ then maxZ = rel.Z + r end
+                found = true
+            end
+        end
+
+        if not found then
+            return base, Vector3.new(4, 6, 2)
+        end
+
+        local size = Vector3.new(maxX - minX, maxY - minY, maxZ - minZ)
+        local offset = Vector3.new((minX + maxX) * 0.5, (minY + maxY) * 0.5, (minZ + maxZ) * 0.5)
+
+        local prev = boundsCache[character]
+        if prev then
+            size = prev.size:Lerp(size, 0.25)
+            offset = prev.off:Lerp(offset, 0.25)
+            prev.size, prev.off = size, offset
+        else
+            boundsCache[character] = { size = size, off = offset }
+        end
+
+        return base * CFrame.new(offset), size
+    end
+
+    local function tracerOrigin(camera)
+        local vp = camera.ViewportSize
+        local from = flags.tracerFrom
+        if from == "Top" then
+            return Vector2.new(vp.X * 0.5, 0)
+        elseif from == "Center" then
+            return Vector2.new(vp.X * 0.5, vp.Y * 0.5)
+        elseif from == "Bottom Left" then
+            return Vector2.new(0, vp.Y)
+        elseif from == "Bottom Right" then
+            return Vector2.new(vp.X, vp.Y)
+        elseif from == "Mouse" then
+            local m = UserInputService:GetMouseLocation()
+            return Vector2.new(m.X, m.Y)
+        end
+        return Vector2.new(vp.X * 0.5, vp.Y)
+    end
+
+    local function hideAll(player)
+        local hb = boxStore[player]
+        if hb then
+            for i = 1, #hb do hb[i].Visible = false end
+        end
+        local h3 = box3Store[player]
+        if h3 then
+            for i = 1, #h3 do h3[i].Visible = false end
+        end
+        local ht = tracerStore[player]
+        if ht then
+            ht.Visible = false
+        end
+        local hs = skelStore[player]
+        if hs then
+            for i = 1, #hs.lines do hs.lines[i].Visible = false end
+        end
+    end
+
+    local function renderEsp()
+        local doBox, doSkel, doTracer, doBox3 = flags.box, flags.skeleton, flags.tracers, flags.box3d
+
+        if not doBox and next(boxStore) then
+            for player in pairs(boxStore) do clearBox(player) end
+        end
+        if not doSkel and next(skelStore) then
+            for player in pairs(skelStore) do clearSkel(player) end
+        end
+        if not doTracer and next(tracerStore) then
+            for player in pairs(tracerStore) do clearTracer(player) end
+        end
+        if not doBox3 and next(box3Store) then
+            for player in pairs(box3Store) do clearBox3(player) end
+        end
+        if not (doBox or doSkel or doTracer or doBox3) then
+            return
+        end
+
+        local camera = workspace.CurrentCamera
+        if not camera then
+            return
+        end
+
+        local needCorners = doBox or doBox3
+        local camCF = camera.CFrame
+        local camPos, camLook = camCF.Position, camCF.LookVector
+        local origin = doTracer and tracerOrigin(camera) or nil
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                local character, _, root = hasBody(player)
+
+                if not character then
+                    if doBox then clearBox(player) end
+                    if doSkel then clearSkel(player) end
+                    if doTracer then clearTracer(player) end
+                    if doBox3 then clearBox3(player) end
+                elseif (root.Position - camPos):Dot(camLook) <= 0 then
+                    hideAll(player)
+                else
+                    local col = espColor(espRole(player))
+
+                    local pts, okPts = nil, false
+                    local bx1, by1, bx2, by2 = 0, 0, 0, 0
+                    local allAhead = false
+
+                    if needCorners then
+                        local cf, size = charBounds(character)
+                        if cf then
+                            pts, okPts = {}, true
+                            bx1, by1, bx2, by2 = math.huge, math.huge, -math.huge, -math.huge
+                            local half = size * 0.5
+                            local ahead = 0
+                            for i = 1, 8 do
+                                local c = CORNERS[i]
+                                local v = camera:WorldToViewportPoint(
+                                    cf:PointToWorldSpace(Vector3.new(c.X * half.X, c.Y * half.Y, c.Z * half.Z))
+                                )
+                                pts[i] = Vector2.new(v.X, v.Y)
+                                if v.Z > 0 then
+                                    ahead = ahead + 1
+                                    if v.X < bx1 then bx1 = v.X end
+                                    if v.X > bx2 then bx2 = v.X end
+                                    if v.Y < by1 then by1 = v.Y end
+                                    if v.Y > by2 then by2 = v.Y end
+                                end
+                            end
+                            allAhead = (ahead == 8)
+                            if ahead < 4 then
+                                okPts = false
+                            end
+                            if okPts and ((bx2 - bx1) < 1 or (by2 - by1) < 1) then
+                                okPts = false
+                            end
+                        end
+                    end
+
+                    if doBox then
+                        local b = ensureBox(player)
+                        if okPts then
+                            local tl, tr = Vector2.new(bx1, by1), Vector2.new(bx2, by1)
+                            local bl, br = Vector2.new(bx1, by2), Vector2.new(bx2, by2)
+                            local segs = { { tl, tr }, { tr, br }, { br, bl }, { bl, tl } }
+                            for i = 1, 4 do
+                                local line = b[i]
+                                line.From, line.To, line.Color, line.Visible = segs[i][1], segs[i][2], col, true
+                            end
+                        else
+                            for _, line in ipairs(b) do line.Visible = false end
+                        end
+                    end
+
+                    if doBox3 then
+                        local b = ensureBox3(player)
+                        if okPts and allAhead then
+                            for i = 1, 12 do
+                                local edge = BOX3_EDGES[i]
+                                local line = b[i]
+                                line.From, line.To, line.Color, line.Visible = pts[edge[1]], pts[edge[2]], col, true
+                            end
+                        else
+                            for _, line in ipairs(b) do line.Visible = false end
+                        end
+                    end
+
+                    if doTracer then
+                        local t = ensureTracer(player)
+                        local tx, ty = nil, nil
+                        local far = flags.maxDist > 0 and (root.Position - camPos).Magnitude > flags.maxDist
+                        if not far then
+                            if okPts then
+                                tx, ty = (bx1 + bx2) * 0.5, by2
+                            else
+                                local v = camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0))
+                                if v.Z > 0 then
+                                    tx, ty = v.X, v.Y
+                                end
+                            end
+                        end
+                        if tx then
+                            t.From, t.To, t.Color, t.Visible = origin, Vector2.new(tx, ty), col, true
+                        else
+                            t.Visible = false
+                        end
+                    end
+
+                    if doSkel then
+                        local s = ensureSkel(player, character)
+                        local rv = camera:WorldToViewportPoint(root.Position)
+                        local vp = camera.ViewportSize
+                        local onScreen = rv.Z > 0 and rv.X > -250 and rv.X < vp.X + 250
+                            and rv.Y > -250 and rv.Y < vp.Y + 250
+
+                        if not onScreen then
+                            for i = 1, #s.lines do s.lines[i].Visible = false end
+                        else
+                            local uq, vx, vy, vok = s.uniq, s.vx, s.vy, s.vok
+                            for j = 1, #uq do
+                                local part = uq[j]
+                                if part.Parent then
+                                    local v = camera:WorldToViewportPoint(part.Position)
+                                    vx[j], vy[j], vok[j] = v.X, v.Y, v.Z > 0
+                                else
+                                    vok[j] = false
+                                end
+                            end
+                            for i = 1, #s.bones do
+                                local line = s.lines[i]
+                                local ja, jb = s.pair[i][1], s.pair[i][2]
+                                if ja and jb and vok[ja] and vok[jb] then
+                                    line.From = Vector2.new(vx[ja], vy[ja])
+                                    line.To = Vector2.new(vx[jb], vy[jb])
+                                    line.Color = col
+                                    line.Visible = true
+                                else
+                                    line.Visible = false
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    table.insert(connections, RunService.RenderStepped:Connect(function()
+        pcall(renderEsp)
+    end))
+
+    table.insert(connections, Players.PlayerRemoving:Connect(function(player)
+        clearEsp(player)
+        clearSkel(player)
+        clearBox(player)
+        clearTracer(player)
+        clearBox3(player)
+    end))
+
+    Visual:Section({ Title = L("vs_esp_section") })
+
+    local function addToggle(titleKey, descKey, flag, registerName, onChange)
+        local element = Visual:Toggle({
+            Title = L(titleKey),
+            Desc = L(descKey),
+            Value = false,
+            Callback = function(state)
+                flags[flag] = state
+                if onChange then
+                    onChange(state)
+                end
+            end,
+        })
+        Util.register(registerName, element)
+        return element
+    end
+
+    addToggle("vs_nametag", "vs_nametag_desc", "names", "esp_nametag", function(state)
+        if not state then
+            pcall(setRobloxNames, false)
+        end
+    end)
+    addToggle("vs_box", "vs_box_desc", "box", "esp_box")
+    addToggle("vs_box3d", "vs_box3d_desc", "box3d", "esp_box3d")
+    addToggle("vs_chams", "vs_chams_desc", "chams", "esp_chams")
+    addToggle("vs_fill", "vs_fill_desc", "fill", "esp_fill")
+    addToggle("vs_roletags", "vs_roletags_desc", "roleTags", "esp_role_tags")
+    addToggle("vs_avatar", "vs_avatar_desc", "avatar", "esp_avatar")
+    addToggle("vs_tracers", "vs_tracers_desc", "tracers", "esp_tracers")
+
+    local OriginDropdown = Visual:Dropdown({
+        Title = L("vs_origin"),
+        Values = { "Bottom", "Bottom Left", "Bottom Right", "Center", "Top", "Mouse" },
+        Value = "Bottom",
+        Callback = function(option)
+            if type(option) == "string" then
+                flags.tracerFrom = option
+            end
+        end,
+    })
+    Util.register("esp_tracer_origin", OriginDropdown)
+
+    addToggle("vs_skeleton", "vs_skeleton_desc", "skeleton", "esp_skeleton")
+
+    local DistLimitToggle = Visual:Toggle({
+        Title = L("vs_distlimit"),
+        Desc = L("vs_distlimit_desc"),
+        Value = false,
+        Callback = function(state)
+            flags.maxDist = state and distLimit or 0
+        end,
+    })
+    Util.register("esp_dist_limit", DistLimitToggle)
+
+    local DistSlider = Visual:Slider({
+        Title = L("vs_maxdist"),
+        Step = 5,
+        Value = { Min = 25, Max = 1000, Default = 250 },
+        Callback = function(value)
+            distLimit = tonumber(value) or distLimit
+            if flags.maxDist > 0 then
+                flags.maxDist = distLimit
+            end
+        end,
+    })
+    Util.register("esp_max_distance", DistSlider)
+
+    task.spawn(function()
+        while isAlive() do
+            task.wait(1)
+        end
+
+        for key, value in pairs(flags) do
+            if type(value) == "boolean" then
+                flags[key] = false
+            end
+        end
+        flags.maxDist = 0
+
+        for _, connection in ipairs(connections) do
+            pcall(function() connection:Disconnect() end)
+        end
+
+        pcall(setRobloxNames, false)
+        for player in pairs(espStore) do pcall(clearEsp, player) end
+        for player in pairs(boxStore) do pcall(clearBox, player) end
+        for player in pairs(box3Store) do pcall(clearBox3, player) end
+        for player in pairs(tracerStore) do pcall(clearTracer, player) end
+        for player in pairs(skelStore) do pcall(clearSkel, player) end
+        for line in pairs(drawn) do pcall(function() line:Remove() end) end
+        table.clear(drawn)
+        pcall(function() EspGui:Destroy() end)
+    end)
+
+    flags.coinEsp = false
+    flags.killFeed = false
+
+    local coinContainerRef = nil
+
+    local function getCoinContainer()
+        if coinContainerRef and coinContainerRef.Parent then
+            return coinContainerRef
+        end
+        local map = CollectionService:GetTagged("CurrentMap")[1]
+        coinContainerRef = (map and map:FindFirstChild("CoinContainer"))
+            or workspace:FindFirstChild("CoinContainer", true)
+        return coinContainerRef
+    end
+
+    local function coinTaken(part)
+        local collected = part:GetAttribute("Collected")
+        return collected == true or collected == "true"
+    end
+
+    local function freshCoins()
+        local out = {}
+        local tagged = CollectionService:GetTagged("ServerCoinPart")
+
+        if #tagged > 0 then
+            for _, part in ipairs(tagged) do
+                if part:IsA("BasePart") and part.Parent and not coinTaken(part) then
+                    out[#out + 1] = part
+                end
+            end
+            return out
+        end
+
+        local container = getCoinContainer()
+        if container then
+            for _, part in ipairs(container:GetChildren()) do
+                if part:IsA("BasePart")
+                    and (part:GetAttribute("CoinID") ~= nil or part.Name == "Coin_Server")
+                    and not coinTaken(part) then
+                    out[#out + 1] = part
+                end
+            end
+        end
+        return out
+    end
+
+    local coinCache = {}
+    local coinEspStore = {}
+
+    task.spawn(function()
+        while isAlive() do
+            if flags.coinEsp then
+                pcall(function()
+                    coinCache = freshCoins()
+                end)
+                task.wait(0.2)
+            else
+                if #coinCache > 0 then
+                    coinCache = {}
+                end
+                task.wait(1)
+            end
+        end
+    end)
+
+    task.spawn(function()
+        while isAlive() do
+            if flags.coinEsp then
+                local seen = {}
+
+                for _, coin in ipairs(coinCache) do
+                    seen[coin] = true
+                    if not coinEspStore[coin] then
+                        local visual = coin:FindFirstChild("CoinVisual")
+                        local adornee = (visual and visual:FindFirstChild("MainCoin")) or visual or coin
+                        coinEspStore[coin] = make("Highlight", {
+                            Adornee = adornee,
+                            FillColor = Color3.fromRGB(255, 205, 55),
+                            FillTransparency = 0.25,
+                            OutlineColor = Color3.fromRGB(255, 235, 150),
+                            OutlineTransparency = 0,
+                            DepthMode = Enum.HighlightDepthMode.AlwaysOnTop,
+                        }, EspGui)
+                    end
+                end
+
+                for coin, highlight in pairs(coinEspStore) do
+                    if not seen[coin] or not coin.Parent then
+                        highlight:Destroy()
+                        coinEspStore[coin] = nil
+                    end
+                end
+            elseif next(coinEspStore) then
+                for coin, highlight in pairs(coinEspStore) do
+                    highlight:Destroy()
+                    coinEspStore[coin] = nil
+                end
+            end
+            task.wait(0.15)
+        end
+
+        for coin, highlight in pairs(coinEspStore) do
+            pcall(function() highlight:Destroy() end)
+            coinEspStore[coin] = nil
+        end
+    end)
+
+    local CRC = nil
+    pcall(function()
+        local modules = ReplicatedStorage:FindFirstChild("Modules")
+        local module = modules and modules:FindFirstChild("CurrentRoundClient")
+        if module then
+            CRC = require(module)
+        end
+    end)
+
+    local GameplayR = nil
+    pcall(function()
+        local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+        GameplayR = remotes and remotes:FindFirstChild("Gameplay")
+    end)
+
+    local function feedNotify(name, killType, role)
+        local tag = ""
+        if role then
+            tag = " [" .. (role == "Murderer" and "M" or (isGunRole(role) and "S" or "I")) .. "]"
+        end
+        pcall(function()
+            WindUI:Notify({
+                Title = L("vs_killfeed_title"),
+                Content = tostring(name) .. tag .. "  ·  " .. tostring(killType or L("vs_eliminated")),
+                Duration = 4,
+                Icon = "skull",
+            })
+        end)
+    end
+
+    local recentKillEvent = {}
+    local lastDead = {}
+
+    local function seenRecently(name)
+        local seen = recentKillEvent[name]
+        return seen ~= nil and os.clock() - seen < 2
+    end
+
+    if GameplayR then
+        local killEvent = GameplayR:FindFirstChild("KillEvent")
+        if killEvent then
+            table.insert(connections, killEvent.OnClientEvent:Connect(function(victim, _, _, killType)
+                if not victim then
+                    return
+                end
+                local name = tostring(victim)
+                recentKillEvent[name] = os.clock()
+                if flags.killFeed then
+                    local player = Players:FindFirstChild(name)
+                    feedNotify(name, killType, player and roleOf(player) or nil)
+                end
+            end))
+        end
+
+        local roundStart = GameplayR:FindFirstChild("RoundStart")
+        if roundStart then
+            table.insert(connections, roundStart.OnClientEvent:Connect(function()
+                lastDead = {}
+                recentKillEvent = {}
+            end))
+        end
+    end
+
+    local function scanDeaths()
+        local data = (CRC and CRC.PlayerData) or roleData
+        if type(data) ~= "table" then
+            return
+        end
+        for name, entry in pairs(data) do
+            if type(entry) == "table" then
+                local dead = (entry.Dead == true or entry.Killed == true)
+                local was = lastDead[name]
+                if was == false and dead then
+                    if flags.killFeed and not seenRecently(name) then
+                        recentKillEvent[name] = os.clock()
+                        feedNotify(name, nil, entry.Role)
+                    end
+                end
+                lastDead[name] = dead
+            end
+        end
+    end
+
+    local function watchDeaths(player)
+        if player == LocalPlayer then
+            return
+        end
+
+        local function hookCharacter(character)
+            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+            if not humanoid then
+                return
+            end
+            table.insert(connections, humanoid.Died:Connect(function()
+                local name = player.Name
+                if flags.killFeed and not seenRecently(name) then
+                    recentKillEvent[name] = os.clock()
+                    feedNotify(player.DisplayName or name, nil, roleOf(player))
+                end
+            end))
+        end
+
+        if player.Character then
+            hookCharacter(player.Character)
+        end
+        table.insert(connections, player.CharacterAdded:Connect(function(character)
+            task.defer(hookCharacter, character)
+        end))
+    end
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        watchDeaths(player)
+    end
+    table.insert(connections, Players.PlayerAdded:Connect(watchDeaths))
+
+    task.spawn(function()
+        while isAlive() do
+            if flags.killFeed then
+                pcall(refreshRoles)
+                pcall(scanDeaths)
+                task.wait(0.2)
+            else
+                task.wait(0.75)
+            end
+        end
+    end)
+
+    Visual:Section({ Title = L("vs_world_section") })
+
+    local CoinEspToggle = Visual:Toggle({
+        Title = L("vs_coinesp"),
+        Desc = L("vs_coinesp_desc"),
+        Value = false,
+        Callback = function(state)
+            flags.coinEsp = state
+        end,
+    })
+    Util.register("coin_esp", CoinEspToggle)
+
+    local KillFeedToggle = Visual:Toggle({
+        Title = L("vs_killfeed"),
+        Desc = L("vs_killfeed_desc"),
+        Value = false,
+        Callback = function(state)
+            flags.killFeed = state
+            if state then
+                lastDead = {}
+            end
+        end,
+    })
+    Util.register("kill_feed", KillFeedToggle)
 end
 
 do
     local PlayerMisc = Tabs.PlayerMisc
+
+    local flags = {
+        loopFling = false,
+        autoMurderer = false,
+        autoSheriff = false,
+    }
+    local flingPower = 10000
+    local flingSeconds = 3
+    local targetName = nil
+
+    local connections = {}
+    local flinging = false
+    local flingAllRunning = false
+    local loopGen = 0
+    local noclipParts = {}
+    local unclipped = {}
+    local flungAt = setmetatable({}, { __mode = "k" })
+
+    local FLING_MAX_DY = 140
+    local FLING_MAX_RISE = 320
+    local canClaim = typeof(sethiddenproperty) == "function"
+    local warnedClaim = false
+
+    local function rootOf(player)
+        local character = player and player.Character
+        return character and character:FindFirstChild("HumanoidRootPart")
+    end
+
+    local function myHumanoid()
+        local character = LocalPlayer.Character
+        return character and character:FindFirstChildOfClass("Humanoid")
+    end
+
+    local function hasBody(player)
+        local character = player and player.Character
+        local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+        local root = character and character:FindFirstChild("HumanoidRootPart")
+        return humanoid ~= nil and root ~= nil and humanoid.Health > 0
+    end
+
+    local function badVec(v)
+        if typeof(v) ~= "Vector3" then
+            return true
+        end
+        if v.X ~= v.X or v.Y ~= v.Y or v.Z ~= v.Z then
+            return true
+        end
+        return math.abs(v.X) == math.huge or math.abs(v.Y) == math.huge or math.abs(v.Z) == math.huge
+    end
+
+    local function voidY()
+        local ok, value = pcall(function()
+            return workspace.FallenPartsDestroyHeight
+        end)
+        return (ok and type(value) == "number") and value or -500
+    end
+
+    local function displayOf(player)
+        return player.DisplayName ~= "" and player.DisplayName or player.Name
+    end
+
+    local roleData = nil
+    local roleStamp = 0
+
+    local function refreshRoles()
+        if os.clock() - roleStamp < 1 then
+            return
+        end
+        roleStamp = os.clock()
+        pcall(function()
+            local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+            local extras = remotes and remotes:FindFirstChild("Extras")
+            local getData = extras and extras:FindFirstChild("GetPlayerData")
+            if getData then
+                local data = getData:InvokeServer()
+                if type(data) == "table" then
+                    roleData = data
+                end
+            end
+        end)
+    end
+
+    local function roleOf(player)
+        local entry = roleData and roleData[player.Name]
+        if type(entry) == "table" and entry.Role then
+            return entry.Role
+        end
+        local backpack = player:FindFirstChildOfClass("Backpack")
+        for _, container in ipairs({ player.Character, backpack }) do
+            if container then
+                if container:FindFirstChild("Knife") then
+                    return "Murderer"
+                end
+                if container:FindFirstChild("Gun") then
+                    return "Sheriff"
+                end
+            end
+        end
+        return nil
+    end
+
+    local function isGunRole(role)
+        return role == "Sheriff" or role == "Hero"
+    end
+
+    local function isAliveInRound(player)
+        local entry = roleData and roleData[player.Name]
+        if type(entry) == "table" and (entry.Dead == true or entry.Killed == true) then
+            return false
+        end
+        return hasBody(player)
+    end
+
+    local function resolvePlayer(name)
+        if type(name) ~= "string" or name == "" then
+            return nil
+        end
+        local exact = Players:FindFirstChild(name)
+        if exact and exact:IsA("Player") then
+            return exact
+        end
+        local lowered = name:lower()
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player.Name:lower() == lowered or player.DisplayName:lower() == lowered then
+                return player
+            end
+        end
+        return nil
+    end
+
+    local function targetList()
+        local list = {}
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                list[#list + 1] = player.Name
+            end
+        end
+        table.sort(list)
+        if #list == 0 then
+            list[1] = L("pm_nobody")
+        end
+        return list
+    end
+
+    local function targetPlayer()
+        local player = resolvePlayer(targetName)
+        if player == LocalPlayer then
+            return nil
+        end
+        return player
+    end
+
+    local function collectParts()
+        table.clear(noclipParts)
+        local character = LocalPlayer.Character
+        if character then
+            for _, descendant in ipairs(character:GetDescendants()) do
+                if descendant:IsA("BasePart") then
+                    noclipParts[#noclipParts + 1] = descendant
+                end
+            end
+        end
+    end
+
+    local function restoreCollisions()
+        for part in pairs(unclipped) do
+            if part.Parent then
+                part.CanCollide = true
+            end
+        end
+        table.clear(unclipped)
+    end
+
+    table.insert(connections, RunService.Stepped:Connect(function()
+        if not flinging then
+            return
+        end
+        for _, part in ipairs(noclipParts) do
+            if part.Parent and part.CanCollide then
+                part.CanCollide = false
+                unclipped[part] = true
+            end
+        end
+    end))
+
+    local function teleportTo(position)
+        local root = rootOf(LocalPlayer)
+        if not root then
+            return false
+        end
+        root.CFrame = CFrame.new(position + Vector3.new(0, 3, 0))
+        root.AssemblyLinearVelocity = Vector3.zero
+        return true
+    end
+
+    local function alreadyFlung(player)
+        local root = rootOf(player)
+        if not root then
+            return true
+        end
+        if os.clock() - (flungAt[player] or -60) < 4 then
+            return true
+        end
+        if root.AssemblyLinearVelocity.Magnitude > 100 then
+            return true
+        end
+        if root.Position.Y < voidY() + 150 then
+            return true
+        end
+        local mine = rootOf(LocalPlayer)
+        if mine then
+            local dy = root.Position.Y - mine.Position.Y
+            if dy < -60 or dy > 120 then
+                return true
+            end
+        end
+        return false
+    end
+
+    local function releaseClaim(part)
+        if part and canClaim then
+            pcall(function()
+                sethiddenproperty(part, "PhysicsRepRootPart", nil)
+            end)
+        end
+    end
+
+    local function flingPlayer(player, keepPos)
+        if flinging then
+            return false, L("pm_err_busy")
+        end
+
+        local myRoot = rootOf(LocalPlayer)
+        local targetRoot = rootOf(player)
+        if not (myRoot and myHumanoid() and targetRoot) then
+            return false, L("pm_err_nochar")
+        end
+
+        local back = keepPos or myRoot.CFrame
+        if math.abs(targetRoot.Position.Y - back.Position.Y) > FLING_MAX_DY then
+            return false, L("pm_err_far")
+        end
+        if targetRoot.AssemblyLinearVelocity.Magnitude > 340 then
+            return false, L("pm_err_flying")
+        end
+
+        if not canClaim and not warnedClaim then
+            warnedClaim = true
+            Util.notify(L("pm_actions_section"), L("pm_noclaim"), "triangle-alert")
+        end
+
+        flinging = true
+        collectParts()
+
+        local moved = false
+        local claimed = nil
+
+        -- pcall: pase lo que pase, abajo se limpia el estado
+        pcall(function()
+            local nudge = 0.1
+            local started = os.clock()
+
+            while os.clock() - started < flingSeconds and isAlive() do
+                RunService.Heartbeat:Wait()
+
+                local mine = rootOf(LocalPlayer)
+                local theirs = rootOf(player)
+                if not (mine and theirs and mine.Parent and theirs.Parent) then
+                    break
+                end
+
+                local y = theirs.Position.Y
+                if y < voidY() + 400 then break end
+                if theirs.AssemblyLinearVelocity.Magnitude > 340 then break end
+                if y > back.Position.Y + FLING_MAX_RISE then break end
+                if y < back.Position.Y - FLING_MAX_DY then break end
+
+                mine.CFrame = theirs.CFrame
+                moved = true
+                flungAt[player] = os.clock()
+
+                if canClaim then
+                    pcall(function()
+                        sethiddenproperty(mine, "PhysicsRepRootPart", theirs)
+                    end)
+                    claimed = mine
+                end
+
+                local velocity = mine.AssemblyLinearVelocity
+                mine.AssemblyLinearVelocity = velocity * flingPower + Vector3.new(0, flingPower, 0)
+                RunService.RenderStepped:Wait()
+                if not mine.Parent then break end
+
+                mine.AssemblyLinearVelocity = velocity
+                RunService.Stepped:Wait()
+                if not mine.Parent then break end
+
+                mine.AssemblyLinearVelocity = velocity + Vector3.new(0, nudge, 0)
+                nudge = -nudge
+            end
+        end)
+
+        releaseClaim(claimed)
+        local current = rootOf(LocalPlayer)
+        if current and current ~= claimed then
+            releaseClaim(current)
+        end
+
+        if not moved then
+            flinging = false
+            restoreCollisions()
+            return false, L("pm_err_grip")
+        end
+
+        local home = CFrame.new(back.Position + Vector3.new(0, 4, 0))
+        for _ = 1, 6 do
+            local character = LocalPlayer.Character
+            if not character then
+                break
+            end
+            for _, descendant in ipairs(character:GetDescendants()) do
+                if descendant:IsA("BasePart") then
+                    descendant.AssemblyLinearVelocity = Vector3.zero
+                    descendant.AssemblyAngularVelocity = Vector3.zero
+                end
+            end
+            RunService.Heartbeat:Wait()
+        end
+
+        local settled = rootOf(LocalPlayer)
+        if settled then
+            settled.CFrame = home
+            settled.AssemblyLinearVelocity = Vector3.zero
+            settled.AssemblyAngularVelocity = Vector3.zero
+        end
+
+        flinging = false
+        restoreCollisions()
+
+        local watchStart = os.clock()
+        while os.clock() - watchStart < 1.5 and isAlive() do
+            RunService.Heartbeat:Wait()
+            local root = rootOf(LocalPlayer)
+            if not root then
+                break
+            end
+            local lv, av = root.AssemblyLinearVelocity, root.AssemblyAngularVelocity
+            if badVec(lv) or badVec(av) or lv.Magnitude > 200 or av.Magnitude > 25 then
+                root.AssemblyLinearVelocity = Vector3.zero
+                root.AssemblyAngularVelocity = Vector3.zero
+                root.CFrame = home
+            end
+        end
+        restoreCollisions()
+
+        return true
+    end
+
+    local function flingAll()
+        if flingAllRunning or flinging then
+            return
+        end
+        local myRoot = rootOf(LocalPlayer)
+        if not myRoot then
+            Util.notify(L("pm_actions_section"), L("pm_nochar"), "triangle-alert")
+            return
+        end
+
+        flingAllRunning = true
+        local home = myRoot.CFrame
+
+        task.spawn(function()
+            local count = 0
+            for _, player in ipairs(Players:GetPlayers()) do
+                if not isAlive() then
+                    break
+                end
+                if player ~= LocalPlayer and hasBody(player) then
+                    if flingPlayer(player, home) then
+                        count = count + 1
+                    end
+                    task.wait(0.1)
+                end
+            end
+
+            local root = rootOf(LocalPlayer)
+            if root then
+                root.CFrame = home
+                root.AssemblyLinearVelocity = Vector3.zero
+            end
+            flingAllRunning = false
+            Util.notify(L("pm_actions_section"), L("pm_flung_n", count), "check")
+        end)
+    end
+
+    task.spawn(function()
+        while isAlive() do
+            if (flags.autoMurderer or flags.autoSheriff)
+                and hasBody(LocalPlayer) and not flinging and not flingAllRunning then
+                pcall(function()
+                    refreshRoles()
+                    local want = nil
+                    for _, player in ipairs(Players:GetPlayers()) do
+                        if player ~= LocalPlayer and isAliveInRound(player) then
+                            local role = roleOf(player)
+                            if ((flags.autoMurderer and role == "Murderer")
+                                or (flags.autoSheriff and isGunRole(role)))
+                                and not alreadyFlung(player) then
+                                want = player
+                                break
+                            end
+                        end
+                    end
+                    if want then
+                        flingPlayer(want)
+                    end
+                end)
+            end
+            task.wait(0.5)
+        end
+    end)
+
+    PlayerMisc:Section({ Title = L("pm_actions_section") })
+
+    local initialList = targetList()
+    if initialList[1] ~= L("pm_nobody") then
+        targetName = initialList[1]
+    end
+
+    local TargetDropdown
+    TargetDropdown = PlayerMisc:Dropdown({
+        Title = L("pm_target"),
+        Desc = L("pm_target_desc"),
+        Values = initialList,
+        Value = initialList[1],
+        Callback = function(option)
+            if type(option) == "string" and option ~= L("pm_nobody") then
+                targetName = option
+            else
+                targetName = nil
+            end
+        end,
+    })
+
+    local function refreshTargets()
+        task.delay(0.2, function()
+            if not isAlive() then
+                return
+            end
+            local list = targetList()
+            pcall(function()
+                TargetDropdown:Refresh(list)
+            end)
+
+            local still = resolvePlayer(targetName)
+            if not (still and still ~= LocalPlayer) then
+                targetName = (list[1] ~= L("pm_nobody")) and list[1] or nil
+                still = resolvePlayer(targetName)
+            end
+            if still then
+                pcall(function()
+                    TargetDropdown:Select(still.Name)
+                end)
+            end
+        end)
+    end
+    table.insert(connections, Players.PlayerAdded:Connect(refreshTargets))
+    table.insert(connections, Players.PlayerRemoving:Connect(refreshTargets))
+
+    PlayerMisc:Button({
+        Title = L("pm_tp"),
+        Desc = L("pm_tp_desc"),
+        Icon = "map-pin",
+        Callback = function()
+            local player = targetPlayer()
+            if not player then
+                Util.notify(L("pm_tp"), L("pm_pick"), "triangle-alert")
+                return
+            end
+            local root = rootOf(player)
+            if not root then
+                Util.notify(L("pm_tp"), L("pm_tp_dead", displayOf(player)), "triangle-alert")
+                return
+            end
+            if teleportTo(root.Position) then
+                Util.notify(L("pm_tp"), L("pm_tp_ok", displayOf(player)), "check")
+            else
+                Util.notify(L("pm_tp"), L("pm_nochar"), "triangle-alert")
+            end
+        end,
+    })
+
+    PlayerMisc:Button({
+        Title = L("pm_fling"),
+        Desc = L("pm_fling_desc"),
+        Icon = "wind",
+        Callback = function()
+            local player = targetPlayer()
+            if not player then
+                Util.notify(L("pm_fling"), L("pm_pick"), "triangle-alert")
+                return
+            end
+            if not rootOf(player) then
+                Util.notify(L("pm_fling"), L("pm_fling_dead", displayOf(player)), "triangle-alert")
+                return
+            end
+            Util.notify(L("pm_fling"), L("pm_flinging", displayOf(player)), "wind")
+            task.spawn(function()
+                local ok, why = flingPlayer(player)
+                if not ok and why then
+                    Util.notify(L("pm_fling"), why, "triangle-alert")
+                end
+            end)
+        end,
+    })
+
+    local LoopFlingToggle
+    LoopFlingToggle = PlayerMisc:Toggle({
+        Title = L("pm_loopfling"),
+        Desc = L("pm_loopfling_desc"),
+        Value = false,
+        Callback = function(state)
+            flags.loopFling = state
+            loopGen = loopGen + 1
+            local gen = loopGen
+
+            if not state then
+                return
+            end
+
+            task.spawn(function()
+                local lastWhy = nil
+                while flags.loopFling and isAlive() and loopGen == gen do
+                    local player = targetPlayer()
+                    if not player then
+                        Util.notify(L("pm_loopfling"), L("pm_pick"), "triangle-alert")
+                        flags.loopFling = false
+                        task.defer(function()
+                            pcall(function()
+                                LoopFlingToggle:Set(false)
+                            end)
+                        end)
+                        break
+                    end
+
+                    if hasBody(LocalPlayer) and rootOf(player)
+                        and not alreadyFlung(player) and not flinging and not flingAllRunning then
+                        local ok, why = flingPlayer(player)
+                        if ok then
+                            lastWhy = nil
+                        elseif why and why ~= lastWhy then
+                            lastWhy = why
+                            Util.notify(L("pm_loopfling"), why, "triangle-alert")
+                        end
+                    end
+                    task.wait(0.4)
+                end
+            end)
+        end,
+    })
+    Util.register("loop_fling", LoopFlingToggle)
+
+    PlayerMisc:Button({
+        Title = L("pm_flingall"),
+        Desc = L("pm_flingall_desc"),
+        Icon = "users",
+        Callback = flingAll,
+    })
+
+    local AutoMurdererToggle = PlayerMisc:Toggle({
+        Title = L("pm_auto_murderer"),
+        Desc = L("pm_auto_murderer_desc"),
+        Value = false,
+        Callback = function(state)
+            flags.autoMurderer = state
+        end,
+    })
+    Util.register("auto_fling_murderer", AutoMurdererToggle)
+
+    local AutoSheriffToggle = PlayerMisc:Toggle({
+        Title = L("pm_auto_sheriff"),
+        Desc = L("pm_auto_sheriff_desc"),
+        Value = false,
+        Callback = function(state)
+            flags.autoSheriff = state
+        end,
+    })
+    Util.register("auto_fling_sheriff", AutoSheriffToggle)
+
+    local PowerSlider = PlayerMisc:Slider({
+        Title = L("pm_power"),
+        Step = 500,
+        Value = { Min = 1000, Max = 50000, Default = 10000 },
+        Callback = function(value)
+            flingPower = tonumber(value) or flingPower
+        end,
+    })
+    Util.register("fling_power", PowerSlider)
+
+    local DurationSlider = PlayerMisc:Slider({
+        Title = L("pm_duration"),
+        Step = 1,
+        Value = { Min = 1, Max = 6, Default = 3 },
+        Callback = function(value)
+            flingSeconds = tonumber(value) or flingSeconds
+        end,
+    })
+    Util.register("fling_duration", DurationSlider)
+
+    task.spawn(function()
+        while isAlive() do
+            task.wait(1)
+        end
+
+        flags.loopFling = false
+        flags.autoMurderer = false
+        flags.autoSheriff = false
+        loopGen = loopGen + 1
+        flinging = false
+
+        for _, connection in ipairs(connections) do
+            pcall(function() connection:Disconnect() end)
+        end
+        pcall(restoreCollisions)
+    end)
 end
 
 do
