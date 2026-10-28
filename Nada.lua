@@ -303,6 +303,7 @@ local Strings = {
         cr_select_crystal = "Select Crystal",
         cr_hatch_amount = "Hatch Amount",
         cr_autohatch = "Auto Hatch Crystal",
+        cr_bulk_unavailable = "Bulk hatch is unavailable",
         cr_none = "None",
         cr_psell_section = "Pet Auto Sell",
         cr_psell_info_title = "Auto Sell Status",
@@ -733,6 +734,7 @@ local Strings = {
         cr_select_crystal = "Seleccionar cristal",
         cr_hatch_amount = "Cantidad por apertura",
         cr_autohatch = "Auto abrir cristal",
+        cr_bulk_unavailable = "La apertura múltiple no está disponible",
         cr_none = "Ninguno",
         cr_psell_section = "Auto venta de mascotas",
         cr_psell_info_title = "Estado de la auto venta",
@@ -6107,7 +6109,7 @@ end
 do
     local Crystals = Tabs.Crystals
 
-    local CRYSTAL_NAMES = {
+        local FALLBACK_CRYSTALS = {
         "Blue Crystal",
         "Green Crystal",
         "Frost Crystal",
@@ -6126,6 +6128,8 @@ do
         Running = false,
         Generation = 0,
     }
+
+    local connections = {}
 
     local function setDesc(paragraph, text)
         pcall(function()
@@ -6150,8 +6154,49 @@ do
         return events and events:FindFirstChild("openCrystalRemote")
     end
 
+    local sharedFolder = ReplicatedStorage:FindFirstChild("shared")
+    local catalogs = sharedFolder and sharedFolder:FindFirstChild("catalogs")
+    local Catalog = catalogs and catalogs:FindFirstChild("crystalChances")
+
+    local function crystalNames()
+        if not Catalog then
+            return FALLBACK_CRYSTALS
+        end
+
+        local names, seen = {}, {}
+        for _, name in ipairs(FALLBACK_CRYSTALS) do
+            if Catalog:FindFirstChild(name) then
+                table.insert(names, name)
+                seen[name] = true
+            end
+        end
+
+        local extra = {}
+        for _, folder in ipairs(Catalog:GetChildren()) do
+            if not seen[folder.Name] then
+                table.insert(extra, folder.Name)
+            end
+        end
+        table.sort(extra, function(a, b)
+            return a:lower() < b:lower()
+        end)
+        for _, name in ipairs(extra) do
+            table.insert(names, name)
+        end
+
+        return #names > 0 and names or FALLBACK_CRYSTALS
+    end
+
     local function hatchCrystal(remote, name, amount)
         if amount > 1 then
+            local okBulk, enabled = pcall(function()
+                local module = require(ReplicatedStorage.shared.modules.GlobalFunctions)
+                return module.isBulkCrystalOpenEnabled()
+            end)
+            if not okBulk or not enabled then
+                return false, L("cr_bulk_unavailable")
+            end
+
             local result = remote:InvokeServer("openCrystalBulk", name, amount)
             if type(result) ~= "table" then
                 return false, L("cr_no_result")
@@ -6170,14 +6215,16 @@ do
         Desc = L("cr_hatch_inactive"),
     })
 
-    local CrystalDropdown = Crystals:Dropdown({
+    local CrystalDropdown
+
+    CrystalDropdown = Crystals:Dropdown({
         Title = L("cr_select_crystal"),
-        Values = CRYSTAL_NAMES,
+        Values = crystalNames(),
         Value = nil,
         SearchBarEnabled = true,
         AllowNone = true,
         Callback = function(option)
-            if type(option) == "string" and table.find(CRYSTAL_NAMES, option) then
+            if type(option) == "string" and table.find(crystalNames(), option) then
                 C.Selected = option
             else
                 C.Selected = nil
@@ -6185,6 +6232,26 @@ do
         end,
     })
     Util.register("crystal_selected", CrystalDropdown)
+
+    local function refreshCrystals()
+        local names = crystalNames()
+        pcall(function()
+            CrystalDropdown:Refresh(names)
+        end)
+
+        if C.Selected and table.find(names, C.Selected) then
+            pcall(function()
+                CrystalDropdown:Select(C.Selected)
+            end)
+        else
+            C.Selected = nil
+        end
+    end
+
+    if Catalog then
+        table.insert(connections, Catalog.ChildAdded:Connect(refreshCrystals))
+        table.insert(connections, Catalog.ChildRemoved:Connect(refreshCrystals))
+    end
 
     local AmountDropdown = Crystals:Dropdown({
         Title = L("cr_hatch_amount"),
@@ -6216,32 +6283,54 @@ do
             setDesc(HatchStatus, L("cr_hatch_preparing"))
 
             task.spawn(function()
+                local lastMessage = nil
+
                 while C.Running and isAlive() and C.Generation == gen do
                     local remote = getRemote()
                     local name, amount = C.Selected, C.Amount
 
                     if not name then
                         setDesc(HatchStatus, L("cr_hatch_select"))
-                    elseif remote then
+                    elseif not remote then
+                        setDesc(HatchStatus, L("cr_hatch_waiting", "openCrystalRemote"))
+                    else
                         local ok, opened, reason = pcall(hatchCrystal, remote, name, amount)
+
                         if C.Running and C.Generation == gen then
                             if ok and opened then
                                 setDesc(HatchStatus, L("cr_hatch_active", name, amount))
+                                lastMessage = nil
                             else
-                                setDesc(HatchStatus, L("cr_hatch_waiting",
-                                    tostring(ok and (reason or L("cr_hatch_check")) or opened)))
+                                local detail = tostring(ok and (reason or L("cr_hatch_check")) or opened)
+                                setDesc(HatchStatus, L("cr_hatch_waiting", detail))
+
+                                if detail ~= lastMessage then
+                                    lastMessage = detail
+                                    warn("[Mystery] Hatch " .. name .. " x" .. amount .. ": " .. detail)
+                                end
                             end
                         end
                     end
 
-                    task.wait(0.1)
+                    task.wait(1)
                 end
             end)
         end,
     })
     Util.register("crystal_autohatch", HatchToggle)
 
-        Crystals:Section({ Title = L("cr_psell_section") })
+    task.spawn(function()
+        while isAlive() do
+            task.wait(1)
+        end
+        for _, connection in ipairs(connections) do
+            pcall(function()
+                connection:Disconnect()
+            end)
+        end
+    end)
+
+    Crystals:Section({ Title = L("cr_psell_section") })
 
     local PS = {
         selected = {},
@@ -9712,4 +9801,3 @@ end
 pcall(function()
     Tabs.Home:Select()
 end)
-
