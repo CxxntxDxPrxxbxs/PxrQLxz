@@ -309,7 +309,7 @@ local Strings = {
         cr_psell_info_title = "Auto Sell Status",
         cr_psell_select = "Select Pets to Sell",
         cr_psell_toggle = "Auto Sell Pets",
-        cr_psell_toggle_desc = "Sells every unlocked copy of the selected pets. Locked and equipped pets are never listed or sold",
+        cr_psell_toggle_desc = "Sells every unlocked copy of the selected pets and auras. Locked and equipped items are never listed or sold",
         cr_psell_inactive = "Inactive",
         cr_psell_running = "Selling",
         cr_psell_waiting = "Waiting for pets to sell",
@@ -323,7 +323,7 @@ local Strings = {
         cr_evo_info_title = "Auto Evolve Status",
         cr_evo_select = "Select Pets to Evolve",
         cr_evo_toggle = "Auto Evolve Pets",
-        cr_evo_toggle_desc = "Evolves the selected pets every time you have 5 identical copies. Locked and equipped pets are never used",
+        cr_evo_toggle_desc = "Evolves the selected pets and auras every time you have 5 identical copies. Locked and equipped items are never used",
         cr_evo_inactive = "Inactive",
         cr_evo_running = "Evolving",
         cr_evo_waiting = "Waiting for 5 identical pets",
@@ -340,7 +340,6 @@ local Strings = {
         cr_trade_players = "Choose Players",
         cr_trade_pets = "Select Pets to Trade",
         cr_trade_auras = "Select Auras to Trade",
-        cr_trade_all = "Select all players",
         cr_trade_toggle = "Auto Trade",
         cr_trade_toggle_desc = "Sends trades to the selected players with up to 6 selected items each. Locked and equipped items are never offered",
         cr_trade_inactive = "Inactive",
@@ -351,8 +350,11 @@ local Strings = {
 
         dt_session_section = "Session Gains",
         dt_session_title = "Session",
-        dt_gained_title = "Gained",
-        dt_hour_title = "Per Hour",
+        dt_gained_title = "Total Gained",
+        dt_1h_title = "Gained in 1 Hour",
+        dt_1d_title = "Gained in 1 Day",
+        dt_running = "Counting",
+        dt_done = "Completed",
         dt_totals_title = "Current Totals",
         dt_reset = "Reset session",
         dt_reset_desc = "Restarts the timer and all gained counters",
@@ -769,7 +771,7 @@ local Strings = {
         cr_psell_info_title = "Estado de la auto venta",
         cr_psell_select = "Seleccionar mascotas a vender",
         cr_psell_toggle = "Auto vender mascotas",
-        cr_psell_toggle_desc = "Vende todas las copias desbloqueadas de las mascotas elegidas. Las bloqueadas y equipadas nunca aparecen ni se venden",
+        cr_psell_toggle_desc = "Vende todas las copias desbloqueadas de las mascotas y auras elegidas. Las bloqueadas y equipadas nunca aparecen ni se venden",
         cr_psell_inactive = "Inactivo",
         cr_psell_running = "Vendiendo",
         cr_psell_waiting = "Esperando mascotas para vender",
@@ -783,7 +785,7 @@ local Strings = {
         cr_evo_info_title = "Estado del auto evolucionar",
         cr_evo_select = "Seleccionar mascotas a evolucionar",
         cr_evo_toggle = "Auto evolucionar mascotas",
-        cr_evo_toggle_desc = "Evoluciona las mascotas elegidas cada vez que tengas 5 copias iguales. Las bloqueadas y equipadas nunca se usan",
+        cr_evo_toggle_desc = "Evoluciona las mascotas y auras elegidas cada vez que tengas 5 copias iguales. Las bloqueadas y equipadas nunca se usan",
         cr_evo_inactive = "Inactivo",
         cr_evo_running = "Evolucionando",
         cr_evo_waiting = "Esperando 5 mascotas iguales",
@@ -800,7 +802,6 @@ local Strings = {
         cr_trade_players = "Elegir jugadores",
         cr_trade_pets = "Seleccionar mascotas a tradear",
         cr_trade_auras = "Seleccionar auras a tradear",
-        cr_trade_all = "Seleccionar todos los jugadores",
         cr_trade_toggle = "Auto Trade",
         cr_trade_toggle_desc = "Envía trades a los jugadores elegidos con hasta 6 items cada uno. Los bloqueados y equipados nunca se ofrecen",
         cr_trade_inactive = "Inactivo",
@@ -811,8 +812,11 @@ local Strings = {
 
         dt_session_section = "Ganancias de la sesión",
         dt_session_title = "Sesión",
-        dt_gained_title = "Ganado",
-        dt_hour_title = "Por hora",
+        dt_gained_title = "Ganado en total",
+        dt_1h_title = "Ganado en 1 hora",
+        dt_1d_title = "Ganado en 1 día",
+        dt_running = "Contando",
+        dt_done = "Completado",
         dt_totals_title = "Totales actuales",
         dt_reset = "Reiniciar sesión",
         dt_reset_desc = "Reinicia el temporizador y todos los contadores de ganancias",
@@ -7375,6 +7379,9 @@ do
     local NOTIFY_NAME = "Mystery Notification"
     local NOTIFY_IMAGE = "https://raw.githubusercontent.com/Mystery-Center/Mystery-Media/main/Mystery%20Notificaciones%20Imagen.png"
 
+    local HOUR = 3600
+    local DAY = 86400
+
     local UNITS = {
         { 1e33, "DC" },
         { 1e30, "NO" },
@@ -7411,6 +7418,8 @@ do
     local Session = {
         start = os.clock(),
         base = {},
+        hour = {},
+        day = {},
     }
 
     local webhookUrl = ""
@@ -7476,13 +7485,20 @@ do
                 end
 
                 local gained = current - Session.base[field.key]
-                local perHour = elapsed >= 10 and gained / (elapsed / 3600) or 0
+
+                if elapsed < HOUR or Session.hour[field.key] == nil then
+                    Session.hour[field.key] = gained
+                end
+                if elapsed < DAY or Session.day[field.key] == nil then
+                    Session.day[field.key] = gained
+                end
 
                 table.insert(list, {
                     name = L(field.label),
                     current = current,
                     gained = gained,
-                    perHour = perHour,
+                    hour = Session.hour[field.key],
+                    day = Session.day[field.key],
                 })
             end
         end
@@ -7490,18 +7506,10 @@ do
         return list, elapsed
     end
 
-    local function gainedText(list)
+    local function signedLines(list, key)
         local lines = {}
         for _, stat in ipairs(list) do
-            table.insert(lines, stat.name .. ": " .. formatSigned(stat.gained))
-        end
-        return #lines > 0 and table.concat(lines, "\n") or L("st_no_data")
-    end
-
-    local function rateText(list)
-        local lines = {}
-        for _, stat in ipairs(list) do
-            table.insert(lines, stat.name .. ": " .. formatSigned(stat.perHour) .. "/h")
+            table.insert(lines, stat.name .. ": " .. formatSigned(stat[key]))
         end
         return #lines > 0 and table.concat(lines, "\n") or L("st_no_data")
     end
@@ -7518,15 +7526,40 @@ do
         return #lines > 0 and table.concat(lines, "\n") or L("st_no_data")
     end
 
+    local function windowStatus(elapsed, limit)
+        if elapsed >= limit then
+            return L("dt_done")
+        end
+        return L("dt_running") .. " (" .. Util.formatTime(elapsed) .. " / " .. Util.formatTime(limit) .. ")"
+    end
+
+    local function sessionText(elapsed)
+        return table.concat({
+            L("pk_time") .. ": " .. Util.formatTime(elapsed),
+            L("pk_hour") .. ": " .. windowStatus(elapsed, HOUR),
+            L("pk_day") .. ": " .. windowStatus(elapsed, DAY),
+        }, "\n")
+    end
+
     Data:Section({ Title = L("dt_session_section") })
 
-    local TimeParagraph = Data:Paragraph({
+    local SessionParagraph = Data:Paragraph({
         Title = L("dt_session_title"),
-        Desc = L("pk_time") .. ": 00:00:00",
+        Desc = L("home_loading"),
     })
 
     local GainedParagraph = Data:Paragraph({
-        Title = L("dt_gained_title") .. " / " .. L("dt_hour_title"),
+        Title = L("dt_gained_title"),
+        Desc = L("home_loading"),
+    })
+
+    local HourParagraph = Data:Paragraph({
+        Title = L("dt_1h_title"),
+        Desc = L("home_loading"),
+    })
+
+    local DayParagraph = Data:Paragraph({
+        Title = L("dt_1d_title"),
         Desc = L("home_loading"),
     })
 
@@ -7546,18 +7579,18 @@ do
         end
     end
 
-    local setTime = makeSetter(TimeParagraph)
+    local setSession = makeSetter(SessionParagraph)
     local setGained = makeSetter(GainedParagraph)
+    local setHour = makeSetter(HourParagraph)
+    local setDay = makeSetter(DayParagraph)
     local setTotals = makeSetter(TotalsParagraph)
 
     local function refreshData()
         local list, elapsed = collect()
-        setTime(L("pk_time") .. ": " .. Util.formatTime(elapsed))
-        setGained(
-            gainedText(list)
-            .. "\n\n" .. L("dt_hour_title") .. "\n"
-            .. rateText(list)
-        )
+        setSession(sessionText(elapsed))
+        setGained(signedLines(list, "gained"))
+        setHour(signedLines(list, "hour"))
+        setDay(signedLines(list, "day"))
         setTotals(totalsText(list))
     end
 
@@ -7568,6 +7601,8 @@ do
         Callback = function()
             Session.start = os.clock()
             Session.base = {}
+            Session.hour = {}
+            Session.day = {}
             pcall(refreshData)
             Util.notify(L("dt_session_section"), L("dt_reset_done"), "check")
         end,
@@ -7577,12 +7612,18 @@ do
         task.wait(1)
         pcall(refreshData)
 
+        local ticks = 0
         while isAlive() do
-            task.wait(5)
+            task.wait(1)
             if not isAlive() then
                 break
             end
-            pcall(refreshData)
+            ticks = ticks + 1
+            if ticks % 5 == 0 then
+                pcall(refreshData)
+            else
+                pcall(collect)
+            end
         end
     end)
 
@@ -7621,9 +7662,10 @@ do
             image = { url = NOTIFY_IMAGE },
             thumbnail = { url = getAvatarUrl() },
             fields = {
-                { name = "Session Time", value = "`" .. Util.formatTime(elapsed) .. "`", inline = false },
-                { name = "Gained", value = clip(gainedText(list), 1024), inline = false },
-                { name = "Per Hour", value = clip(rateText(list), 1024), inline = false },
+                { name = "Session", value = clip(sessionText(elapsed), 1024), inline = false },
+                { name = "Total Gained", value = clip(signedLines(list, "gained"), 1024), inline = false },
+                { name = "Gained in 1 Hour", value = clip(signedLines(list, "hour"), 1024), inline = false },
+                { name = "Gained in 1 Day", value = clip(signedLines(list, "day"), 1024), inline = false },
                 { name = "Totals", value = clip(totalsText(list), 1024), inline = false },
             },
             footer = { text = NOTIFY_NAME .. " - " .. Config.HubName },
