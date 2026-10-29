@@ -6421,6 +6421,83 @@ do
         return child ~= nil and child:IsA("BoolValue") and child.Value == true
     end
 
+        local function auraFolder()
+        local direct = LocalPlayer:FindFirstChild("powerUpsFolder")
+        if direct then
+            return direct
+        end
+        for _, child in ipairs(LocalPlayer:GetChildren()) do
+            local n = child.Name:lower()
+            if (n:find("powerup", 1, true) or n:find("aura", 1, true))
+                and not n:find("equipped", 1, true)
+                and (child:IsA("Folder") or child:IsA("Configuration")) then
+                return child
+            end
+        end
+        return nil
+    end
+
+    local function findRemote(exact, must, anyOf)
+        local events = ReplicatedStorage:FindFirstChild("rEvents")
+        if not events then
+            return nil
+        end
+        for _, name in ipairs(exact) do
+            local remote = events:FindFirstChild(name)
+            if remote then
+                return remote
+            end
+        end
+        for _, remote in ipairs(events:GetChildren()) do
+            if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+                local n = remote.Name:lower()
+                local okMust = n:find(must, 1, true) ~= nil
+                local okAny = false
+                for _, word in ipairs(anyOf) do
+                    if n:find(word, 1, true) then
+                        okAny = true
+                    end
+                end
+                if okMust and okAny then
+                    return remote
+                end
+            end
+        end
+        return nil
+    end
+
+    local function fireRemote(remote, ...)
+        local args = table.pack(...)
+        if remote:IsA("RemoteFunction") then
+            return pcall(remote.InvokeServer, remote, table.unpack(args, 1, args.n))
+        end
+        return pcall(remote.FireServer, remote, table.unpack(args, 1, args.n))
+    end
+
+    local function tryVariants(variants, memo, confirm)
+        local order = {}
+        if memo.sig then
+            order[1] = memo.sig
+        end
+        for i = 1, #variants do
+            if i ~= memo.sig then
+                order[#order + 1] = i
+            end
+        end
+        for _, i in ipairs(order) do
+            variants[i]()
+            local started = os.clock()
+            while os.clock() - started < 1.5 do
+                task.wait(0.1)
+                if confirm() then
+                    memo.sig = i
+                    return true
+                end
+            end
+        end
+        return false
+    end
+
     local function sellablePets(onlyName)
         local list = {}
         local folder = LocalPlayer:FindFirstChild("petsFolder")
@@ -6445,7 +6522,7 @@ do
 
     local function sellableAuras(onlyName)
         local list = {}
-        local container = LocalPlayer:FindFirstChild("powerUpsFolder")
+        local container = auraFolder()
         if not container then
             return list
         end
@@ -6775,48 +6852,45 @@ do
 
     local SellAuras = makePicker(L("cr_asell_select"), "crystal_aura_sell_list", sellableAuras)
 
-    local function waitGone(item, timeout)
-        local started = os.clock()
-        while os.clock() - started < timeout do
-            if not item.Parent then
-                return true
-            end
-            task.wait(0.05)
-        end
-        return not item.Parent
-    end
+    local auraSellMemo = {}
+    local petSellMemo = {}
 
     local function sellOneAura(aura)
-        local events = ReplicatedStorage:FindFirstChild("rEvents")
-        local remote = events and events:FindFirstChild("sellPowerUpEvent")
+        local remote = findRemote({ "sellPowerUpEvent", "sellAuraEvent" }, "sell", { "powerup", "aura" })
         if not remote then
             return false
         end
-
-        pcall(function()
-            remote:FireServer("sellPowerUp", aura)
+        local name = aura.Name
+        local before = #sellableAuras(name)
+        return tryVariants({
+            function() fireRemote(remote, "sellPowerUp", aura) end,
+            function() fireRemote(remote, "sellPowerUp", aura, "") end,
+            function() fireRemote(remote, "sellPowerUp", name) end,
+            function() fireRemote(remote, "sellAura", aura) end,
+            function() fireRemote(remote, aura) end,
+        }, auraSellMemo, function()
+            return not aura.Parent or #sellableAuras(name) < before
         end)
-        return waitGone(aura, 3)
     end
 
     local function sellOnePet(pet)
         local events = ReplicatedStorage:FindFirstChild("rEvents")
-        local remote = events and events:FindFirstChild("sellPetEvent")
+        local remote = events and (events:FindFirstChild("sellPetEvent")
+            or findRemote({}, "sell", { "pet" }))
         if not remote then
             return false
         end
-
-        pcall(function()
-            remote:FireServer("sellPet", pet, "")
+        local name = pet.Name
+        local before = #sellablePets(name)
+        return tryVariants({
+            function() fireRemote(remote, "sellPet", pet, "") end,
+            function() fireRemote(remote, "sellPet", pet) end,
+            function() fireRemote(remote, "sellPet", name) end,
+            function() fireRemote(remote, "sellPets", { pet }) end,
+            function() fireRemote(remote, pet) end,
+        }, petSellMemo, function()
+            return not pet.Parent or #sellablePets(name) < before
         end)
-        if waitGone(pet, 3) then
-            return true
-        end
-
-        pcall(function()
-            remote:FireServer("sellPet", pet)
-        end)
-        return waitGone(pet, 3)
     end
 
     PetSellToggle = Crystals:Toggle({
@@ -6937,6 +7011,42 @@ do
         end,
     })
 
+    Crystals:Button({
+        Title = "Copy Aura Debug",
+        Icon = "bug",
+        Callback = function()
+            local out = {}
+            for _, child in ipairs(LocalPlayer:GetChildren()) do
+                local n = child.Name:lower()
+                if n:find("aura", 1, true) or n:find("powerup", 1, true) or n:find("pet", 1, true) then
+                    out[#out + 1] = "P: " .. child.Name .. " [" .. child.ClassName .. "]"
+                end
+            end
+            local folder = auraFolder()
+            if folder then
+                for _, d in ipairs(folder:GetDescendants()) do
+                    local attrs = {}
+                    for k, v in pairs(d:GetAttributes()) do
+                        attrs[#attrs + 1] = k .. "=" .. tostring(v)
+                    end
+                    local value = d:IsA("ValueBase") and tostring(d.Value) or ""
+                    out[#out + 1] = d:GetFullName() .. " [" .. d.ClassName .. "] " .. value .. " " .. table.concat(attrs, ",")
+                end
+            end
+            local events = ReplicatedStorage:FindFirstChild("rEvents")
+            if events then
+                for _, r in ipairs(events:GetChildren()) do
+                    local n = r.Name:lower()
+                    if n:find("sell", 1, true) or n:find("evolve", 1, true)
+                        or n:find("aura", 1, true) or n:find("powerup", 1, true) then
+                        out[#out + 1] = "R: " .. r.Name .. " [" .. r.ClassName .. "]"
+                    end
+                end
+            end
+            Util.copyWithNotice("Aura Debug", table.concat(out, "\n"))
+        end,
+    })
+
     Crystals:Section({ Title = L("cr_evo_section") })
 
     local EVO_NEEDED = 5
@@ -6984,32 +7094,47 @@ do
         }, "\n"))
     end
 
+    local auraEvoMemo = {}
+
     local function evolveOne(isAura, name)
         local events = ReplicatedStorage:FindFirstChild("rEvents")
         local getter = isAura and evolvableAuras or evolvablePets
-        local remote = events and events:FindFirstChild(isAura and "evolvePowerUpEvent" or "petEvolveEvent")
+        local remote
+        if isAura then
+            remote = findRemote({ "evolvePowerUpEvent", "evolveAuraEvent" }, "evolve", { "powerup", "aura" })
+        else
+            remote = events and events:FindFirstChild("petEvolveEvent")
+        end
         local list = getter(name)
         if not remote or #list < EVO_NEEDED then
             return false
         end
 
         local before = #list
-        pcall(function()
-            if isAura then
-                remote:FireServer("evolvePowerUp", list[1])
-            else
-                remote:FireServer("evolvePet", name)
-            end
-        end)
 
-        local started = os.clock()
-        while os.clock() - started < 4 do
-            task.wait(0.2)
-            if #getter(name) < before then
-                return true
+        if not isAura then
+            pcall(function()
+                remote:FireServer("evolvePet", name)
+            end)
+            local started = os.clock()
+            while os.clock() - started < 4 do
+                task.wait(0.2)
+                if #getter(name) < before then
+                    return true
+                end
             end
+            return false
         end
-        return false
+
+        local first = list[1]
+        return tryVariants({
+            function() fireRemote(remote, "evolvePowerUp", name) end,
+            function() fireRemote(remote, "evolvePowerUp", first) end,
+            function() fireRemote(remote, "evolveAura", name) end,
+            function() fireRemote(remote, name) end,
+        }, auraEvoMemo, function()
+            return #getter(name) < before
+        end)
     end
 
     local EvoToggle
