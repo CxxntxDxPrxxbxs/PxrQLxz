@@ -6413,6 +6413,14 @@ do
         return set
     end
 
+    local function hasFlag(item, name)
+        if item:GetAttribute(name) == true then
+            return true
+        end
+        local child = item:FindFirstChild(name) or item:FindFirstChild(name:lower())
+        return child ~= nil and child:IsA("BoolValue") and child.Value == true
+    end
+
     local function sellablePets(onlyName)
         local list = {}
         local folder = LocalPlayer:FindFirstChild("petsFolder")
@@ -6425,7 +6433,7 @@ do
             if group:IsA("Folder") then
                 for _, pet in ipairs(group:GetChildren()) do
                     if (not onlyName or pet.Name == onlyName)
-                        and pet:GetAttribute("Locked") ~= true
+                        and not hasFlag(pet, "Locked")
                         and not equipped[pet] then
                         table.insert(list, pet)
                     end
@@ -6446,9 +6454,15 @@ do
         for _, child in ipairs(LocalPlayer:GetChildren()) do
             local n = child.Name:lower()
             if n:find("equipped", 1, true) and (n:find("powerup", 1, true) or n:find("aura", 1, true)) then
-                for _, value in ipairs(child:GetChildren()) do
-                    if value:IsA("ObjectValue") and value.Value then
-                        equipped[value.Value] = true
+                if child:IsA("ObjectValue") then
+                    if child.Value then
+                        equipped[child.Value] = true
+                    end
+                else
+                    for _, value in ipairs(child:GetChildren()) do
+                        if value:IsA("ObjectValue") and value.Value then
+                            equipped[value.Value] = true
+                        end
                     end
                 end
             end
@@ -6456,7 +6470,7 @@ do
 
         local function consider(item)
             if (not onlyName or item.Name == onlyName)
-                and item:GetAttribute("Locked") ~= true
+                and not hasFlag(item, "Locked")
                 and item:GetAttribute("Equipped") ~= true
                 and not equipped[item] then
                 table.insert(list, item)
@@ -6470,6 +6484,26 @@ do
                 end
             else
                 consider(child)
+            end
+        end
+        return list
+    end
+
+    local function evolvablePets(onlyName)
+        local list = {}
+        for _, pet in ipairs(sellablePets(onlyName)) do
+            if not hasFlag(pet, "evolved") then
+                table.insert(list, pet)
+            end
+        end
+        return list
+    end
+
+    local function evolvableAuras(onlyName)
+        local list = {}
+        for _, aura in ipairs(sellableAuras(onlyName)) do
+            if not hasFlag(aura, "evolved") then
+                table.insert(list, aura)
             end
         end
         return list
@@ -6742,7 +6776,7 @@ do
     local SellAuras = makePicker(L("cr_asell_select"), "crystal_aura_sell_list", sellableAuras)
 
     local function waitGone(item, timeout)
-    local started = os.clock()
+        local started = os.clock()
         while os.clock() - started < timeout do
             if not item.Parent then
                 return true
@@ -6762,7 +6796,7 @@ do
         pcall(function()
             remote:FireServer("sellPowerUp", aura)
         end)
-        return waitGone(aura, 2)
+        return waitGone(aura, 3)
     end
 
     local function sellOnePet(pet)
@@ -6775,14 +6809,14 @@ do
         pcall(function()
             remote:FireServer("sellPet", pet, "")
         end)
-        if waitGone(pet, 2) then
+        if waitGone(pet, 3) then
             return true
         end
 
         pcall(function()
             remote:FireServer("sellPet", pet)
         end)
-        return waitGone(pet, 2)
+        return waitGone(pet, 3)
     end
 
     PetSellToggle = Crystals:Toggle({
@@ -6823,7 +6857,7 @@ do
                                 break
                             end
 
-                            if pet.Parent and pet:GetAttribute("Locked") ~= true and PS.selected[name] then
+                            if pet.Parent and PS.selected[name] then
                                 PS.status = L("cr_psell_running")
                                 didSell = true
 
@@ -6856,7 +6890,7 @@ do
                                 break
                             end
 
-                            if aura.Parent and aura:GetAttribute("Locked") ~= true and SellAuras.selected[name] then
+                            if aura.Parent and SellAuras.selected[name] then
                                 PS.status = L("cr_psell_running")
                                 didSell = true
 
@@ -6919,8 +6953,8 @@ do
         Desc = L("cr_none"),
     })
 
-    local EvoPets = makePicker(L("cr_evo_select"), "crystal_pet_evolve_list", sellablePets)
-    local EvoAuras = makePicker(L("cr_evo_select_auras"), "crystal_aura_evolve_list", sellableAuras)
+    local EvoPets = makePicker(L("cr_evo_select"), "crystal_pet_evolve_list", evolvablePets)
+    local EvoAuras = makePicker(L("cr_evo_select_auras"), "crystal_aura_evolve_list", evolvableAuras)
 
     local function renderEvo()
         local names = {}
@@ -6951,36 +6985,31 @@ do
     end
 
     local function evolveOne(isAura, name)
-    local events = ReplicatedStorage:FindFirstChild("rEvents")
-
-        if isAura then
-            local remote = events and events:FindFirstChild("EvolvePowerUpEvent")
-            local list = sellableAuras(name)
-            if not remote or #list < EVO_NEEDED then
-                return false
-            end
-
-            local before = #list
-            pcall(function()
-                remote:FireServer("evolvePowerUp", list[EVO_NEEDED])
-            end)
-            task.wait(0.6)
-
-            return #sellableAuras(name) < before
-        end
-
-        local remote = events and events:FindFirstChild("petEvolveEvent")
-        if not remote then
+        local events = ReplicatedStorage:FindFirstChild("rEvents")
+        local getter = isAura and evolvableAuras or evolvablePets
+        local remote = events and events:FindFirstChild(isAura and "evolvePowerUpEvent" or "petEvolveEvent")
+        local list = getter(name)
+        if not remote or #list < EVO_NEEDED then
             return false
         end
 
-        local before = #sellablePets(name)
+        local before = #list
         pcall(function()
-            remote:FireServer("evolvePet", name)
+            if isAura then
+                remote:FireServer("evolvePowerUp", list[1])
+            else
+                remote:FireServer("evolvePet", name)
+            end
         end)
-        task.wait(0.6)
 
-        return #sellablePets(name) < before
+        local started = os.clock()
+        while os.clock() - started < 4 do
+            task.wait(0.2)
+            if #getter(name) < before then
+                return true
+            end
+        end
+        return false
     end
 
     local EvoToggle
@@ -7018,7 +7047,7 @@ do
 
                     for _, group in ipairs({ { false, EvoPets }, { true, EvoAuras } }) do
                         local isAura, picker = group[1], group[2]
-                        local getter = isAura and sellableAuras or sellablePets
+                        local getter = isAura and evolvableAuras or evolvablePets
 
                         for name in pairs(picker.selected) do
                             while EV.running and isAlive() and EV.generation == gen
@@ -8145,7 +8174,7 @@ do
         pcall(restoreAll)
     end)
 
-        local NOTIFY_COLOR = 0x170158
+    local NOTIFY_COLOR = 0x170158
     local NOTIFY_NAME = "Mystery Notification"
     local NOTIFY_IMAGE = "https://raw.githubusercontent.com/Mystery-Center/Mystery-Media/main/Mystery%20Notificaciones%20Imagen.png"
 
