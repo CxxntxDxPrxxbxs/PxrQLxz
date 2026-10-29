@@ -319,6 +319,35 @@ local Strings = {
         cr_psell_select_first = "Select at least one pet first.",
         cr_psell_failed = "The game didn't accept the sale. Auto sell stopped.",
         cr_psell_refresh = "Refresh pets",
+        cr_evo_section = "Auto Evolve",
+        cr_evo_info_title = "Auto Evolve Status",
+        cr_evo_select = "Select Pets to Evolve",
+        cr_evo_toggle = "Auto Evolve Pets",
+        cr_evo_toggle_desc = "Evolves the selected pets every time you have 5 identical copies. Locked and equipped pets are never used",
+        cr_evo_inactive = "Inactive",
+        cr_evo_running = "Evolving",
+        cr_evo_waiting = "Waiting for 5 identical pets",
+        cr_evo_summary = "Evolvable pets: %d - Types: %d",
+        cr_evo_selected = "Selected: %s",
+        cr_evo_done = "Evolved: %d",
+        cr_evo_select_first = "Select at least one pet first.",
+        cr_evo_failed = "The game didn't accept the evolution. Auto evolve stopped.",
+        cr_evo_refresh = "Refresh evolve pets",
+        cr_asell_select = "Select Auras to Sell",
+        cr_evo_select_auras = "Select Auras to Evolve",
+        cr_trade_section = "Auto Trade",
+        cr_trade_info_title = "Auto Trade Status",
+        cr_trade_players = "Choose Players",
+        cr_trade_pets = "Select Pets to Trade",
+        cr_trade_auras = "Select Auras to Trade",
+        cr_trade_all = "Select all players",
+        cr_trade_toggle = "Auto Trade",
+        cr_trade_toggle_desc = "Sends trades to the selected players with up to 6 selected items each. Locked and equipped items are never offered",
+        cr_trade_inactive = "Inactive",
+        cr_trade_running = "Trading",
+        cr_trade_waiting = "Waiting for players and items",
+        cr_trade_done = "Trades sent: %d",
+        cr_trade_select_first = "Select at least one player and one item first.",
 
         dt_session_section = "Session Gains",
         dt_session_title = "Session",
@@ -750,6 +779,35 @@ local Strings = {
         cr_psell_select_first = "Elige al menos una mascota primero.",
         cr_psell_failed = "El juego no aceptó la venta. Auto venta detenida.",
         cr_psell_refresh = "Actualizar mascotas",
+        cr_evo_section = "Auto evolucionar",
+        cr_evo_info_title = "Estado del auto evolucionar",
+        cr_evo_select = "Seleccionar mascotas a evolucionar",
+        cr_evo_toggle = "Auto evolucionar mascotas",
+        cr_evo_toggle_desc = "Evoluciona las mascotas elegidas cada vez que tengas 5 copias iguales. Las bloqueadas y equipadas nunca se usan",
+        cr_evo_inactive = "Inactivo",
+        cr_evo_running = "Evolucionando",
+        cr_evo_waiting = "Esperando 5 mascotas iguales",
+        cr_evo_summary = "Mascotas evolucionables: %d - Tipos: %d",
+        cr_evo_selected = "Elegidas: %s",
+        cr_evo_done = "Evolucionadas: %d",
+        cr_evo_select_first = "Elige al menos una mascota primero.",
+        cr_evo_failed = "El juego no aceptó la evolución. Auto evolucionar detenido.",
+        cr_evo_refresh = "Actualizar mascotas a evolucionar",
+        cr_asell_select = "Seleccionar auras a vender",
+        cr_evo_select_auras = "Seleccionar auras a evolucionar",
+        cr_trade_section = "Auto Trade",
+        cr_trade_info_title = "Estado del Auto Trade",
+        cr_trade_players = "Elegir jugadores",
+        cr_trade_pets = "Seleccionar mascotas a tradear",
+        cr_trade_auras = "Seleccionar auras a tradear",
+        cr_trade_all = "Seleccionar todos los jugadores",
+        cr_trade_toggle = "Auto Trade",
+        cr_trade_toggle_desc = "Envía trades a los jugadores elegidos con hasta 6 items cada uno. Los bloqueados y equipados nunca se ofrecen",
+        cr_trade_inactive = "Inactivo",
+        cr_trade_running = "Tradeando",
+        cr_trade_waiting = "Esperando jugadores e items",
+        cr_trade_done = "Trades enviados: %d",
+        cr_trade_select_first = "Elige al menos un jugador y un item primero.",
 
         dt_session_section = "Ganancias de la sesión",
         dt_session_title = "Sesión",
@@ -5498,7 +5556,7 @@ do
          end
         return math.clamp(n, min, max)
     end
-    
+
     local function applyPlayerCfg()
     if not (PlayerCfg.speed.enabled or PlayerCfg.jump.enabled or PlayerCfg.gravity.enabled) then
         return
@@ -6109,7 +6167,7 @@ end
 do
     local Crystals = Tabs.Crystals
 
-        local FALLBACK_CRYSTALS = {
+    local FALLBACK_CRYSTALS = {
         "Blue Crystal",
         "Green Crystal",
         "Frost Crystal",
@@ -6319,17 +6377,6 @@ do
     })
     Util.register("crystal_autohatch", HatchToggle)
 
-    task.spawn(function()
-        while isAlive() do
-            task.wait(1)
-        end
-        for _, connection in ipairs(connections) do
-            pcall(function()
-                connection:Disconnect()
-            end)
-        end
-    end)
-
     Crystals:Section({ Title = L("cr_psell_section") })
 
     local PS = {
@@ -6386,6 +6433,208 @@ do
             end
         end
         return list
+    end
+
+    local function sellableAuras(onlyName)
+        local list = {}
+        local container = LocalPlayer:FindFirstChild("powerUpsFolder")
+        if not container then
+            return list
+        end
+
+        local equipped = {}
+        for _, child in ipairs(LocalPlayer:GetChildren()) do
+            local n = child.Name:lower()
+            if n:find("equipped", 1, true) and (n:find("powerup", 1, true) or n:find("aura", 1, true)) then
+                for _, value in ipairs(child:GetChildren()) do
+                    if value:IsA("ObjectValue") and value.Value then
+                        equipped[value.Value] = true
+                    end
+                end
+            end
+        end
+
+        local function consider(item)
+            if (not onlyName or item.Name == onlyName)
+                and item:GetAttribute("Locked") ~= true
+                and item:GetAttribute("Equipped") ~= true
+                and not equipped[item] then
+                table.insert(list, item)
+            end
+        end
+
+        for _, child in ipairs(container:GetChildren()) do
+            if child:IsA("Folder") then
+                for _, item in ipairs(child:GetChildren()) do
+                    consider(item)
+                end
+            else
+                consider(child)
+            end
+        end
+        return list
+    end
+
+    local function tradablePets(onlyName)
+        local list = {}
+        for _, pet in ipairs(sellablePets(onlyName)) do
+            if pet.Parent and pet.Parent.Name == "Unique" then
+                table.insert(list, pet)
+            end
+        end
+        return list
+    end
+
+    local Pickers = {}
+
+    local function newPickerDropdown(P, title, flag)
+        P.dropdown = Crystals:Dropdown({
+            Title = title,
+            Values = {},
+            Value = {},
+            Multi = true,
+            AllowNone = true,
+            SearchBarEnabled = true,
+            Callback = function(options)
+                if P.rendering then
+                    return
+                end
+                P.selected = {}
+                for label in pairs(toSet(options)) do
+                    local name = P.byLabel[label]
+                    if name then
+                        P.selected[name] = true
+                    end
+                end
+            end,
+        })
+        Util.register(flag, P.dropdown)
+        table.insert(Pickers, P)
+    end
+
+    local function makePicker(title, flag, getItems)
+        local P = { selected = {}, byLabel = {}, counts = {}, signature = "", rendering = false }
+        newPickerDropdown(P, title, flag)
+
+        function P.refresh(force)
+            local counts, order = {}, {}
+            for _, item in ipairs(getItems()) do
+                if not counts[item.Name] then
+                    counts[item.Name] = 0
+                    table.insert(order, item.Name)
+                end
+                counts[item.Name] = counts[item.Name] + 1
+            end
+            table.sort(order)
+
+            local labels, byLabel, sig = {}, {}, {}
+            for _, name in ipairs(order) do
+                local label = name .. " x" .. counts[name]
+                byLabel[label] = name
+                table.insert(labels, label)
+                table.insert(sig, label)
+            end
+
+            local text = table.concat(sig, ";")
+            if not force and text == P.signature then
+                return
+            end
+            P.signature = text
+            P.byLabel = byLabel
+            P.counts = counts
+
+            for name in pairs(P.selected) do
+                if not counts[name] then
+                    P.selected[name] = nil
+                end
+            end
+
+            local keep = {}
+            for _, name in ipairs(order) do
+                if P.selected[name] then
+                    table.insert(keep, name .. " x" .. counts[name])
+                end
+            end
+
+            P.rendering = true
+            pcall(function()
+                P.dropdown:Refresh(labels)
+            end)
+            pcall(function()
+                P.dropdown:Select(keep)
+            end)
+            task.delay(0.3, function()
+                P.rendering = false
+            end)
+        end
+
+        return P
+    end
+
+    local function makePlayerPicker(title, flag)
+        local P = { selected = {}, byLabel = {}, counts = {}, signature = "", rendering = false }
+        newPickerDropdown(P, title, flag)
+
+        function P.refresh(force)
+            local labels, byLabel, present = {}, {}, {}
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer then
+                    local label = player.DisplayName .. " - " .. player.Name
+                    byLabel[label] = player.Name
+                    present[player.Name] = true
+                    table.insert(labels, label)
+                end
+            end
+            table.sort(labels)
+
+            local text = table.concat(labels, ";")
+            if not force and text == P.signature then
+                return
+            end
+            P.signature = text
+            P.byLabel = byLabel
+
+            for name in pairs(P.selected) do
+                if not present[name] then
+                    P.selected[name] = nil
+                end
+            end
+
+            local keep = {}
+            for label, name in pairs(byLabel) do
+                if P.selected[name] then
+                    table.insert(keep, label)
+                end
+            end
+
+            P.rendering = true
+            pcall(function()
+                P.dropdown:Refresh(labels)
+            end)
+            pcall(function()
+                P.dropdown:Select(keep)
+            end)
+            task.delay(0.3, function()
+                P.rendering = false
+            end)
+        end
+
+        function P.selectAll()
+            local keep = {}
+            for label, name in pairs(P.byLabel) do
+                P.selected[name] = true
+                table.insert(keep, label)
+            end
+            P.rendering = true
+            pcall(function()
+                P.dropdown:Select(keep)
+            end)
+            task.delay(0.3, function()
+                P.rendering = false
+            end)
+        end
+
+        return P
     end
 
     local function renderPetSell()
@@ -6490,6 +6739,32 @@ do
     })
     Util.register("crystal_pet_sell_list", PetSellDropdown)
 
+    local SellAuras = makePicker(L("cr_asell_select"), "crystal_aura_sell_list", sellableAuras)
+
+    local function waitGone(item, timeout)
+    local started = os.clock()
+        while os.clock() - started < timeout do
+            if not item.Parent then
+                return true
+            end
+            task.wait(0.05)
+        end
+        return not item.Parent
+    end
+
+    local function sellOneAura(aura)
+        local events = ReplicatedStorage:FindFirstChild("rEvents")
+        local remote = events and events:FindFirstChild("sellPowerUpEvent")
+        if not remote then
+            return false
+        end
+
+        pcall(function()
+            remote:FireServer("sellPowerUp", aura)
+        end)
+        return waitGone(aura, 2)
+    end
+
     local function sellOnePet(pet)
         local events = ReplicatedStorage:FindFirstChild("rEvents")
         local remote = events and events:FindFirstChild("sellPetEvent")
@@ -6500,9 +6775,14 @@ do
         pcall(function()
             remote:FireServer("sellPet", pet, "")
         end)
-        task.wait(0.2)
+        if waitGone(pet, 2) then
+            return true
+        end
 
-        return pet.Parent == nil
+        pcall(function()
+            remote:FireServer("sellPet", pet)
+        end)
+        return waitGone(pet, 2)
     end
 
     PetSellToggle = Crystals:Toggle({
@@ -6520,7 +6800,7 @@ do
                 return
             end
 
-            if next(PS.selected) == nil then
+            if next(PS.selected) == nil and next(SellAuras.selected) == nil then
                 PS.running = false
                 Util.notify(L("cr_psell_section"), L("cr_psell_select_first"), "triangle-alert")
                 task.defer(function()
@@ -6570,6 +6850,39 @@ do
                         end
                     end
 
+                    for name in pairs(SellAuras.selected) do
+                        for _, aura in ipairs(sellableAuras(name)) do
+                            if not (PS.running and isAlive() and PS.generation == gen) then
+                                break
+                            end
+
+                            if aura.Parent and aura:GetAttribute("Locked") ~= true and SellAuras.selected[name] then
+                                PS.status = L("cr_psell_running")
+                                didSell = true
+
+                                if sellOneAura(aura) then
+                                    PS.sold = PS.sold + 1
+                                    failStreak = 0
+                                else
+                                    failStreak = failStreak + 1
+                                end
+
+                                if failStreak >= 3 then
+                                    PS.running = false
+                                    PS.status = L("cr_psell_inactive")
+                                    Util.notify(L("cr_psell_section"), L("cr_psell_failed"), "triangle-alert")
+                                    task.defer(function()
+                                        pcall(function()
+                                            PetSellToggle:Set(false)
+                                        end)
+                                    end)
+                                    renderPetSell()
+                                    return
+                                end
+                            end
+                        end
+                    end
+
                     if not didSell then
                         PS.status = L("cr_psell_waiting")
                     end
@@ -6586,8 +6899,326 @@ do
         Icon = "refresh-cw",
         Callback = function()
             refreshPetSell(true)
+            SellAuras.refresh(true)
         end,
     })
+
+    Crystals:Section({ Title = L("cr_evo_section") })
+
+    local EVO_NEEDED = 5
+
+    local EV = {
+        evolved = 0,
+        running = false,
+        generation = 0,
+        status = L("cr_evo_inactive"),
+    }
+
+    local EvoInfo = Crystals:Paragraph({
+        Title = L("cr_evo_info_title"),
+        Desc = L("cr_none"),
+    })
+
+    local EvoPets = makePicker(L("cr_evo_select"), "crystal_pet_evolve_list", sellablePets)
+    local EvoAuras = makePicker(L("cr_evo_select_auras"), "crystal_aura_evolve_list", sellableAuras)
+
+    local function renderEvo()
+        local names = {}
+        for name in pairs(EvoPets.selected) do
+            table.insert(names, name)
+        end
+        for name in pairs(EvoAuras.selected) do
+            table.insert(names, name)
+        end
+        table.sort(names)
+
+        local ready, types = 0, 0
+        for _, picker in ipairs({ EvoPets, EvoAuras }) do
+            for _, count in pairs(picker.counts) do
+                if count >= EVO_NEEDED then
+                    types = types + 1
+                    ready = ready + math.floor(count / EVO_NEEDED) * EVO_NEEDED
+                end
+            end
+        end
+
+        setDesc(EvoInfo, table.concat({
+            L("boss_status") .. ": " .. EV.status,
+            L("cr_evo_summary", ready, types),
+            L("cr_evo_selected", #names > 0 and table.concat(names, ", ") or L("cr_none")),
+            L("cr_evo_done", EV.evolved),
+        }, "\n"))
+    end
+
+    local function evolveOne(isAura, name)
+    local events = ReplicatedStorage:FindFirstChild("rEvents")
+
+        if isAura then
+            local remote = events and events:FindFirstChild("EvolvePowerUpEvent")
+            local list = sellableAuras(name)
+            if not remote or #list < EVO_NEEDED then
+                return false
+            end
+
+            local before = #list
+            pcall(function()
+                remote:FireServer("evolvePowerUp", list[EVO_NEEDED])
+            end)
+            task.wait(0.6)
+
+            return #sellableAuras(name) < before
+        end
+
+        local remote = events and events:FindFirstChild("petEvolveEvent")
+        if not remote then
+            return false
+        end
+
+        local before = #sellablePets(name)
+        pcall(function()
+            remote:FireServer("evolvePet", name)
+        end)
+        task.wait(0.6)
+
+        return #sellablePets(name) < before
+    end
+
+    local EvoToggle
+    EvoToggle = Crystals:Toggle({
+        Title = L("cr_evo_toggle"),
+        Desc = L("cr_evo_toggle_desc"),
+        Value = false,
+        Callback = function(state)
+            EV.running = state
+            EV.generation = EV.generation + 1
+            local gen = EV.generation
+
+            if not state then
+                EV.status = L("cr_evo_inactive")
+                renderEvo()
+                return
+            end
+
+            if next(EvoPets.selected) == nil and next(EvoAuras.selected) == nil then
+                EV.running = false
+                Util.notify(L("cr_evo_section"), L("cr_evo_select_first"), "triangle-alert")
+                task.defer(function()
+                    pcall(function()
+                        EvoToggle:Set(false)
+                    end)
+                end)
+                return
+            end
+
+            task.spawn(function()
+                local failStreak = 0
+
+                while EV.running and isAlive() and EV.generation == gen do
+                    local didEvolve = false
+
+                    for _, group in ipairs({ { false, EvoPets }, { true, EvoAuras } }) do
+                        local isAura, picker = group[1], group[2]
+                        local getter = isAura and sellableAuras or sellablePets
+
+                        for name in pairs(picker.selected) do
+                            while EV.running and isAlive() and EV.generation == gen
+                                and picker.selected[name]
+                                and #getter(name) >= EVO_NEEDED do
+
+                                EV.status = L("cr_evo_running")
+                                didEvolve = true
+
+                                if evolveOne(isAura, name) then
+                                    EV.evolved = EV.evolved + 1
+                                    failStreak = 0
+                                else
+                                    failStreak = failStreak + 1
+                                end
+
+                                if failStreak >= 3 then
+                                    EV.running = false
+                                    EV.status = L("cr_evo_inactive")
+                                    Util.notify(L("cr_evo_section"), L("cr_evo_failed"), "triangle-alert")
+                                    task.defer(function()
+                                        pcall(function()
+                                            EvoToggle:Set(false)
+                                        end)
+                                    end)
+                                    renderEvo()
+                                    return
+                                end
+                            end
+                        end
+                    end
+
+                    if not didEvolve then
+                        EV.status = L("cr_evo_waiting")
+                    end
+                    renderEvo()
+                    task.wait(0.5)
+                end
+            end)
+        end,
+    })
+    Util.register("crystal_pet_autoevolve", EvoToggle)
+
+    Crystals:Button({
+        Title = L("cr_evo_refresh"),
+        Icon = "refresh-cw",
+        Callback = function()
+            EvoPets.refresh(true)
+            EvoAuras.refresh(true)
+        end,
+    })
+
+    Crystals:Section({ Title = L("cr_trade_section") })
+
+    local TR = {
+        running = false,
+        generation = 0,
+        sent = 0,
+        status = L("cr_trade_inactive"),
+    }
+
+    local TradeInfo = Crystals:Paragraph({
+        Title = L("cr_trade_info_title"),
+        Desc = L("cr_none"),
+    })
+
+    local TradePlayers = makePlayerPicker(L("cr_trade_players"), "crystal_trade_players")
+    local TradePets = makePicker(L("cr_trade_pets"), "crystal_trade_pets", tradablePets)
+    local TradeAuras = makePicker(L("cr_trade_auras"), "crystal_trade_auras", sellableAuras)
+
+    local function renderTrade()
+        setDesc(TradeInfo, table.concat({
+            L("boss_status") .. ": " .. TR.status,
+            L("cr_trade_done", TR.sent),
+        }, "\n"))
+    end
+
+    local function collectOffer(limit)
+        local offer = {}
+        for name in pairs(TradePets.selected) do
+            for _, pet in ipairs(tradablePets(name)) do
+                if #offer >= limit then
+                    return offer
+                end
+                table.insert(offer, pet)
+            end
+        end
+        for name in pairs(TradeAuras.selected) do
+            for _, aura in ipairs(sellableAuras(name)) do
+                if #offer >= limit then
+                    return offer
+                end
+                table.insert(offer, aura)
+            end
+        end
+        return offer
+    end
+
+    Crystals:Button({
+        Title = L("cr_trade_all"),
+        Icon = "users",
+        Callback = function()
+            TradePlayers.selectAll()
+        end,
+    })
+
+    local TradeToggle
+    TradeToggle = Crystals:Toggle({
+        Title = L("cr_trade_toggle"),
+        Desc = L("cr_trade_toggle_desc"),
+        Value = false,
+        Callback = function(state)
+            TR.running = state
+            TR.generation = TR.generation + 1
+            local gen = TR.generation
+
+            if not state then
+                TR.status = L("cr_trade_inactive")
+                renderTrade()
+                return
+            end
+
+            local hasItems = next(TradePets.selected) ~= nil or next(TradeAuras.selected) ~= nil
+            if next(TradePlayers.selected) == nil or not hasItems then
+                TR.running = false
+                Util.notify(L("cr_trade_section"), L("cr_trade_select_first"), "triangle-alert")
+                task.defer(function()
+                    pcall(function()
+                        TradeToggle:Set(false)
+                    end)
+                end)
+                return
+            end
+
+            task.spawn(function()
+                local function active()
+                    return TR.running and isAlive() and TR.generation == gen
+                end
+
+                while active() do
+                    local events = ReplicatedStorage:FindFirstChild("rEvents")
+                    local tradingEvent = events and events:FindFirstChild("tradingEvent")
+
+                    local targets = {}
+                    for name in pairs(TradePlayers.selected) do
+                        local player = Players:FindFirstChild(name)
+                        if player then
+                            table.insert(targets, player)
+                        end
+                    end
+
+                    if not tradingEvent or #targets == 0 or #collectOffer(1) == 0 then
+                        TR.status = L("cr_trade_waiting")
+                    else
+                        for _, player in ipairs(targets) do
+                            if not active() then
+                                break
+                            end
+
+                            local offer = collectOffer(6)
+                            if #offer == 0 then
+                                break
+                            end
+
+                            TR.status = L("cr_trade_running")
+                            pcall(function()
+                                tradingEvent:FireServer("sendTradeRequest", player)
+                            end)
+                            task.wait(0.5)
+
+                            for _, item in ipairs(offer) do
+                                if not active() then
+                                    break
+                                end
+                                pcall(function()
+                                    tradingEvent:FireServer("offerItem", item)
+                                end)
+                                task.wait(0.05)
+                            end
+
+                            task.wait(0.05)
+
+                            if active() then
+                                pcall(function()
+                                    tradingEvent:FireServer("acceptTrade")
+                                end)
+                                TR.sent = TR.sent + 1
+                                renderTrade()
+                                task.wait(2)
+                            end
+                        end
+                    end
+
+                    renderTrade()
+                    task.wait(2)
+                end
+            end)
+        end,
+    })
+    Util.register("crystal_trade_toggle", TradeToggle)
 
     task.spawn(function()
         task.wait(1)
@@ -6600,13 +7231,36 @@ do
     end)
 
     task.spawn(function()
+        task.wait(1.2)
+        for _, picker in ipairs(Pickers) do
+            pcall(picker.refresh, true)
+        end
+
+        while isAlive() do
+            task.wait(1.5)
+            for _, picker in ipairs(Pickers) do
+                pcall(picker.refresh, false)
+            end
+        end
+    end)
+
+    task.spawn(function()
         while isAlive() do
             task.wait(1)
+        end
+        for _, connection in ipairs(connections) do
+            pcall(function()
+                connection:Disconnect()
+            end)
         end
         C.Running = false
         C.Generation = C.Generation + 1
         PS.running = false
         PS.generation = PS.generation + 1
+        EV.running = false
+        EV.generation = EV.generation + 1
+        TR.running = false
+        TR.generation = TR.generation + 1
     end)
 end
 
