@@ -7643,14 +7643,6 @@ do
         return text
     end
 
-    local avatarCache = nil
-    local function getAvatarUrl()
-        if not avatarCache then
-            avatarCache = Logger.getAvatar(LocalPlayer.UserId)
-        end
-        return avatarCache
-    end
-
     local function buildEmbed()
         local list, elapsed = collect()
 
@@ -7660,7 +7652,6 @@ do
                 .. LocalPlayer.UserId .. "/profile) - ID `" .. LocalPlayer.UserId .. "`",
             color = NOTIFY_COLOR,
             image = { url = NOTIFY_IMAGE },
-            thumbnail = { url = getAvatarUrl() },
             fields = {
                 { name = "Session", value = clip(sessionText(elapsed), 1024), inline = false },
                 { name = "Total Gained", value = clip(signedLines(list, "gained"), 1024), inline = false },
@@ -8040,8 +8031,8 @@ do
         return string.format("%.0f", value)
     end
 
-    local function findFakeStat(names)
-        local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+    local function findStatOf(player, names)
+        local leaderstats = player:FindFirstChild("leaderstats")
 
         for _, name in ipairs(names) do
             local stat = leaderstats and leaderstats:FindFirstChild(name)
@@ -8051,13 +8042,17 @@ do
         end
 
         for _, name in ipairs(names) do
-            local stat = LocalPlayer:FindFirstChild(name)
+            local stat = player:FindFirstChild(name)
             if stat and (stat:IsA("IntValue") or stat:IsA("NumberValue")) then
                 return stat
             end
         end
 
         return nil
+    end
+
+    local function findFakeStat(names)
+        return findStatOf(LocalPlayer, names)
     end
 
     local function captureLabels(key, record)
@@ -8279,21 +8274,10 @@ do
         end,
     })
 
-    task.spawn(function()
-        while isAlive() do
-            task.wait(1)
-        end
-        for _, connection in ipairs(Spy.connections) do
-            pcall(function()
-                connection:Disconnect()
-            end)
-        end
-        pcall(restoreAll)
-    end)
-
     local NOTIFY_COLOR = 0x170158
     local NOTIFY_NAME = "Mystery Notification"
     local NOTIFY_IMAGE = "https://raw.githubusercontent.com/Mystery-Center/Mystery-Media/main/Mystery%20Notificaciones%20Imagen.png"
+    local MAX_EQUIPPED_PETS = 12
 
     local hubStart = os.clock()
 
@@ -8330,15 +8314,6 @@ do
         return string.format("%.0f", value)
     end
 
-    local avatarCache = nil
-
-    local function getAvatarUrl()
-        if not avatarCache then
-            avatarCache = Logger.getAvatar(LocalPlayer.UserId)
-        end
-        return avatarCache
-    end
-
     local function postHook(url, embed)
         local request = Logger.getRequest()
         if not request or not isValidHook(url) then
@@ -8355,21 +8330,35 @@ do
             return false
         end
 
-        local ok, response = pcall(request, {
-            Url = url,
-            Method = "POST",
-            Headers = { ["Content-Type"] = "application/json" },
-            Body = body,
-        })
-        if not ok then
-            return false
+        for attempt = 1, 3 do
+            local ok, response = pcall(request, {
+                Url = url,
+                Method = "POST",
+                Headers = { ["Content-Type"] = "application/json" },
+                Body = body,
+            })
+
+            local code = ok and type(response) == "table" and tonumber(response.StatusCode or response.Status)
+            if code and code >= 200 and code < 300 then
+                return true
+            end
+
+            local retry = not code or code == 408 or code == 429 or code >= 500
+            if not retry or attempt == 3 or not isAlive() then
+                return false
+            end
+
+            local delay = 2 * attempt
+            if code == 429 then
+                pcall(function()
+                    local data = HttpService:JSONDecode(response.Body)
+                    delay = math.max(delay, tonumber(data.retry_after) or 0)
+                end)
+            end
+            task.wait(math.min(delay, 15))
         end
 
-        if type(response) == "table" then
-            local code = tonumber(response.StatusCode or response.Status)
-            return code ~= nil and code >= 200 and code < 300
-        end
-        return true
+        return false
     end
 
     local reportFields = {
@@ -8395,14 +8384,15 @@ do
     end
     Util.getRealValue = readReal
 
-    local function collectStats()
+    local function collectStats(player)
+        player = player or LocalPlayer
         local list = {}
         for _, field in ipairs(reportFields) do
-            local object = findFakeStat(field.names)
+            local object = findStatOf(player, field.names)
             if object then
                 table.insert(list, {
                     name = field.name,
-                    value = readReal(object),
+                    value = player == LocalPlayer and readReal(object) or (tonumber(object.Value) or 0),
                     track = field.track,
                 })
             end
@@ -8410,38 +8400,46 @@ do
         return list
     end
 
-    local function statsText(list)
+    local function statsText(list, player)
+        player = player or LocalPlayer
         local lines = {}
         for _, stat in ipairs(list) do
             table.insert(lines, "**" .. stat.name .. ":** " .. formatSpy(stat.value))
         end
-        local map = LocalPlayer:FindFirstChild("currentMap")
+        local map = player:FindFirstChild("currentMap")
         if map then
             table.insert(lines, "**Current Map:** " .. tostring(map.Value))
+        end
+        if #lines == 0 then
+            return L("st_no_data")
         end
         return table.concat(lines, "\n")
     end
 
-    local function petsText()
-        local pets = LocalPlayer:FindFirstChild("equippedPets")
-        if not pets then
-            return nil
-        end
+    local function petsText(player)
+        player = player or LocalPlayer
+        local pets = player:FindFirstChild("equippedPets")
 
         local counts = {}
         local order = {}
-        for _, pet in ipairs(pets:GetChildren()) do
-            local target = pet:IsA("ObjectValue") and pet.Value
-            local name = target and target.Name or pet.Name
-            if not counts[name] then
-                counts[name] = 0
-                table.insert(order, name)
+        local total = 0
+        if pets then
+            for _, pet in ipairs(pets:GetChildren()) do
+                local target = pet:IsA("ObjectValue") and pet.Value
+                if not (pet:IsA("ObjectValue") and not target) then
+                    local name = target and target.Name or pet.Name
+                    if not counts[name] then
+                        counts[name] = 0
+                        table.insert(order, name)
+                    end
+                    counts[name] = counts[name] + 1
+                    total = total + 1
+                end
             end
-            counts[name] = counts[name] + 1
         end
 
-        if #order == 0 then
-            return nil
+        if total == 0 then
+            return "None"
         end
 
         table.sort(order)
@@ -8449,23 +8447,30 @@ do
         for _, name in ipairs(order) do
             table.insert(lines, "• " .. name .. " x" .. counts[name])
         end
+        table.insert(lines, "**Equipped:** " .. total .. "/" .. MAX_EQUIPPED_PETS)
         return table.concat(lines, "\n")
     end
 
-    local function playerText()
-        local executor, version = Util.getExecutor("Unknown")
-        local membership = LocalPlayer.MembershipType == Enum.MembershipType.Premium and "Premium" or "No Premium"
-        local profile = "https://www.roblox.com/users/" .. LocalPlayer.UserId .. "/profile"
+    local function playerText(player)
+        player = player or LocalPlayer
+        local membership = player.MembershipType == Enum.MembershipType.Premium and "Premium" or "No Premium"
+        local profile = "https://www.roblox.com/users/" .. player.UserId .. "/profile"
 
-        return table.concat({
-            "**Username:** [`" .. LocalPlayer.Name .. "`](" .. profile .. ")",
-            "**Display Name:** " .. LocalPlayer.DisplayName,
-            "**User ID:** `" .. LocalPlayer.UserId .. "`",
-            "**Account Age:** " .. Logger.formatAge(LocalPlayer.AccountAge),
+        local lines = {
+            "**Username:** [`" .. player.Name .. "`](" .. profile .. ")",
+            "**Display Name:** " .. player.DisplayName,
+            "**User ID:** `" .. player.UserId .. "`",
+            "**Account Age:** " .. Logger.formatAge(player.AccountAge),
             "**Membership:** " .. membership,
-            "**Platform:** " .. Logger.getPlatform(),
-            "**Executor:** " .. executor .. " (" .. version .. ")",
-        }, "\n")
+        }
+
+        if player == LocalPlayer then
+            local executor, version = Util.getExecutor("Unknown")
+            table.insert(lines, "**Platform:** " .. Logger.getPlatform())
+            table.insert(lines, "**Executor:** " .. executor .. " (" .. version .. ")")
+        end
+
+        return table.concat(lines, "\n")
     end
 
     local function serverText()
@@ -8488,12 +8493,12 @@ do
             title = title,
             color = NOTIFY_COLOR,
             image = { url = NOTIFY_IMAGE },
-            thumbnail = { url = getAvatarUrl() },
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
         }
     end
 
-    local function buildInfoEmbed()
+    local function buildInfoEmbed(player)
+        player = player or LocalPlayer
         local embed = baseEmbed("Player Report")
         embed.footer = { text = NOTIFY_NAME .. " • " .. Config.HubName }
 
@@ -8501,17 +8506,12 @@ do
         local gameText = "[" .. Util.getGameName("Unknown") .. "](" .. gameUrl .. ")\nGame ID: " .. game.GameId
 
         embed.fields = {
-            { name = "Player Info", value = clip(playerText(), 1024), inline = false },
-            { name = "Stats", value = clip(statsText(collectStats()), 1024), inline = false },
+            { name = "Player Info", value = clip(playerText(player), 1024), inline = false },
+            { name = "Stats", value = clip(statsText(collectStats(player), player), 1024), inline = false },
+            { name = "Equipped Pets", value = clip(petsText(player), 1024), inline = false },
+            { name = "Game", value = clip(gameText, 1024), inline = false },
+            { name = "Server", value = clip(serverText(), 1024), inline = false },
         }
-
-        local pets = petsText()
-        if pets then
-            table.insert(embed.fields, { name = "Equipped Pets", value = clip(pets, 1024), inline = false })
-        end
-
-        table.insert(embed.fields, { name = "Game", value = clip(gameText, 1024), inline = false })
-        table.insert(embed.fields, { name = "Server", value = clip(serverText(), 1024), inline = false })
 
         return embed
     end
@@ -8523,6 +8523,7 @@ do
         generation = 0,
         startTime = 0,
         sent = 0,
+        sending = false,
         gains = {},
         last = {},
     }
@@ -8584,7 +8585,7 @@ do
 
         embed.fields = {
             { name = "Farm Time", value = clip(table.concat(timeLines, "\n"), 1024), inline = false },
-            { name = "Stats", value = clip(statsText(list), 1024), inline = false },
+            { name = "Stats", value = clip(statsText(list, LocalPlayer), 1024), inline = false },
         }
 
         if #gainLines > 0 then
@@ -8594,11 +8595,7 @@ do
             table.insert(embed.fields, { name = "Per Hour", value = clip(table.concat(rateLines, "\n"), 1024), inline = true })
         end
 
-        local pets = petsText()
-        if pets then
-            table.insert(embed.fields, { name = "Equipped Pets", value = clip(pets, 1024), inline = false })
-        end
-
+        table.insert(embed.fields, { name = "Equipped Pets", value = clip(petsText(), 1024), inline = false })
         table.insert(embed.fields, { name = "Server", value = clip(serverText(), 1024), inline = false })
 
         return embed
@@ -8628,6 +8625,60 @@ do
     Stats:Section({ Title = L("st_info_section") })
 
     local infoUrl = ""
+    local Info = { targetName = nil, labels = {} }
+
+    local function buildInfoList()
+        Info.labels = {}
+        local list = {}
+        for _, player in ipairs(Players:GetPlayers()) do
+            local label = player.DisplayName .. " - " .. player.Name
+            Info.labels[label] = player.Name
+            table.insert(list, label)
+        end
+        table.sort(list)
+        return list
+    end
+
+    local InfoDropdown = Stats:Dropdown({
+        Title = L("st_select_player"),
+        Values = buildInfoList(),
+        Value = nil,
+        SearchBarEnabled = true,
+        AllowNone = true,
+        Callback = function(option)
+            if type(option) == "string" and option ~= "" then
+                Info.targetName = Info.labels[option]
+            else
+                Info.targetName = nil
+            end
+        end,
+    })
+
+    local function refreshInfoPlayers()
+        pcall(function()
+            InfoDropdown:Refresh(buildInfoList())
+        end)
+        if Info.targetName then
+            for label, name in pairs(Info.labels) do
+                if name == Info.targetName then
+                    pcall(function()
+                        InfoDropdown:Select(label)
+                    end)
+                    break
+                end
+            end
+        end
+    end
+
+    table.insert(Spy.connections, Players.PlayerAdded:Connect(function()
+        task.delay(0.5, refreshInfoPlayers)
+    end))
+    table.insert(Spy.connections, Players.PlayerRemoving:Connect(function(player)
+        if player.Name == Info.targetName then
+            Info.targetName = nil
+        end
+        task.delay(0.5, refreshInfoPlayers)
+    end))
 
     local InfoUrlInput = Stats:Input({
         Title = L("bw_input"),
@@ -8645,7 +8696,10 @@ do
         Desc = L("st_info_send_desc"),
         Icon = "send",
         Callback = function()
-            sendWithNotice(infoUrl, buildInfoEmbed, L("st_info_section"))
+            sendWithNotice(infoUrl, function()
+                local target = Info.targetName and Players:FindFirstChild(Info.targetName) or LocalPlayer
+                return buildInfoEmbed(target)
+            end, L("st_info_section"))
         end,
     })
 
@@ -8702,13 +8756,16 @@ do
             while Notify.enabled and isAlive() and Notify.generation == generation do
                 pcall(sampleGains)
 
-                if os.clock() - lastSent >= Notify.minutes * 60 then
+                if os.clock() - lastSent >= Notify.minutes * 60 and not Notify.sending then
                     lastSent = os.clock()
                     Notify.sent = Notify.sent + 1
+                    Notify.sending = true
 
                     task.spawn(function()
                         local ok, embed = pcall(buildNotifyEmbed, false)
-                        if not (ok and postHook(Notify.url, embed)) then
+                        local sent = ok and postHook(Notify.url, embed)
+                        Notify.sending = false
+                        if not sent then
                             Util.notify(L("st_notify_section"), L("st_hook_failed"), "triangle-alert")
                         end
                     end)
@@ -8746,6 +8803,7 @@ do
             end
         end,
     })
+    Util.register("stats_notify_toggle", NotifyToggle)
 
     Stats:Button({
         Title = L("st_notify_test"),
@@ -8756,6 +8814,20 @@ do
             end, L("st_notify_section"))
         end,
     })
+
+    task.spawn(function()
+        while isAlive() do
+            task.wait(1)
+        end
+        Notify.enabled = false
+        Notify.generation = Notify.generation + 1
+        for _, connection in ipairs(Spy.connections) do
+            pcall(function()
+                connection:Disconnect()
+            end)
+        end
+        pcall(restoreAll)
+    end)
 end
 
 do
