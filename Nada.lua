@@ -6587,13 +6587,7 @@ do
     end
 
     local function tradablePets(onlyName)
-        local list = {}
-        for _, pet in ipairs(sellablePets(onlyName)) do
-            if pet.Parent and pet.Parent.Name == "Unique" then
-                table.insert(list, pet)
-            end
-        end
-        return list
+        return sellablePets(onlyName)
     end
 
     local Pickers = {}
@@ -7011,42 +7005,6 @@ do
         end,
     })
 
-    Crystals:Button({
-        Title = "Copy Aura Debug",
-        Icon = "bug",
-        Callback = function()
-            local out = {}
-            for _, child in ipairs(LocalPlayer:GetChildren()) do
-                local n = child.Name:lower()
-                if n:find("aura", 1, true) or n:find("powerup", 1, true) or n:find("pet", 1, true) then
-                    out[#out + 1] = "P: " .. child.Name .. " [" .. child.ClassName .. "]"
-                end
-            end
-            local folder = auraFolder()
-            if folder then
-                for _, d in ipairs(folder:GetDescendants()) do
-                    local attrs = {}
-                    for k, v in pairs(d:GetAttributes()) do
-                        attrs[#attrs + 1] = k .. "=" .. tostring(v)
-                    end
-                    local value = d:IsA("ValueBase") and tostring(d.Value) or ""
-                    out[#out + 1] = d:GetFullName() .. " [" .. d.ClassName .. "] " .. value .. " " .. table.concat(attrs, ",")
-                end
-            end
-            local events = ReplicatedStorage:FindFirstChild("rEvents")
-            if events then
-                for _, r in ipairs(events:GetChildren()) do
-                    local n = r.Name:lower()
-                    if n:find("sell", 1, true) or n:find("evolve", 1, true)
-                        or n:find("aura", 1, true) or n:find("powerup", 1, true) then
-                        out[#out + 1] = "R: " .. r.Name .. " [" .. r.ClassName .. "]"
-                    end
-                end
-            end
-            Util.copyWithNotice("Aura Debug", table.concat(out, "\n"))
-        end,
-    })
-
     Crystals:Section({ Title = L("cr_evo_section") })
 
     local EVO_NEEDED = 5
@@ -7270,14 +7228,6 @@ do
         end
         return offer
     end
-
-    Crystals:Button({
-        Title = L("cr_trade_all"),
-        Icon = "users",
-        Callback = function()
-            TradePlayers.selectAll()
-        end,
-    })
 
     local TradeToggle
     TradeToggle = Crystals:Toggle({
