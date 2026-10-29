@@ -1,0 +1,212 @@
+-- ===== CONFIG =====
+local PET_NAME  = ""      -- nombre exacto de una pet que tengas (ej: "Small Fry")
+local AURA_NAME = ""      -- nombre exacto de una aura (ej: el que ves en powerUpsFolder)
+local TEST_SELL_PET   = false  -- vende 1 copia de PET_NAME
+local TEST_SELL_AURA  = false  -- vende 1 copia de AURA_NAME
+local TEST_EVOLVE_PET = false  -- evoluciona PET_NAME (necesitas 5)
+local TEST_EVOLVE_AURA = false -- evoluciona AURA_NAME (necesitas 5)
+-- ==================
+
+local RS = game:GetService("ReplicatedStorage")
+local lp = game:GetService("Players").LocalPlayer
+local function p(...) print("[DIAG]", ...) end
+local function attrs(i, ind)
+    for k, v in pairs(i:GetAttributes()) do p(ind .. "attr", k, tostring(v)) end
+end
+
+local function snapshot(folder)
+    local snap = {}
+    if not folder then return snap end
+    for _, g in ipairs(folder:GetChildren()) do
+        for _, item in ipairs(g:GetChildren()) do
+            snap[item.Name] = (snap[item.Name] or 0) + 1
+        end
+    end
+    return snap
+end
+local function diff(a, b)
+    local keys = {}
+    for k in pairs(a) do keys[k] = true end
+    for k in pairs(b) do keys[k] = true end
+    for k in pairs(keys) do
+        if (a[k] or 0) ~= (b[k] or 0) then p("   CAMBIO:", k, (a[k] or 0) .. " -> " .. (b[k] or 0)) end
+    end
+end
+local function isEquipped(item)
+    for _, c in ipairs(lp:GetChildren()) do
+        if c.Name:lower():find("equipped") then
+            for _, v in ipairs(c:GetChildren()) do
+                if v:IsA("ObjectValue") and v.Value == item then return true end
+            end
+        end
+    end
+    return false
+end
+local function findItem(folder, name)
+    if not folder then return nil end
+    for _, g in ipairs(folder:GetChildren()) do
+        for _, item in ipairs(g:GetChildren()) do
+            if item.Name == name and item:GetAttribute("Locked") ~= true and not isEquipped(item) then
+                return item
+            end
+        end
+    end
+end
+local function findN(folder, name, n)
+    local list = {}
+    if not folder then return list end
+    for _, g in ipairs(folder:GetChildren()) do
+        for _, item in ipairs(g:GetChildren()) do
+            if item.Name == name and item:GetAttribute("Locked") ~= true and not isEquipped(item) then
+                table.insert(list, item)
+                if #list >= n then return list end
+            end
+        end
+    end
+    return list
+end
+
+local petsFolder = lp:FindFirstChild("petsFolder")
+local auraFolder = lp:FindFirstChild("powerUpsFolder")
+local ev = RS:WaitForChild("rEvents")
+
+p("========== 1. PETS ==========")
+if petsFolder then
+    for _, g in ipairs(petsFolder:GetChildren()) do
+        p("grupo:", g.Name, g.ClassName, "hijos:", #g:GetChildren())
+        local seen = {}
+        for _, pet in ipairs(g:GetChildren()) do
+            if not seen[pet.Name] then
+                seen[pet.Name] = true
+                p("  ", pet.Name, pet.ClassName, "equipada:", tostring(isEquipped(pet)))
+                attrs(pet, "      ")
+                for _, c in ipairs(pet:GetChildren()) do p("      hijo", c.Name, c.ClassName) end
+            end
+        end
+    end
+else p("NO existe petsFolder") end
+
+p("========== 2. AURAS (powerUpsFolder) ==========")
+if auraFolder then
+    for _, g in ipairs(auraFolder:GetChildren()) do
+        p("grupo:", g.Name, g.ClassName, "hijos:", #g:GetChildren())
+        attrs(g, "   ")
+        local seen = {}
+        for _, a in ipairs(g:GetChildren()) do
+            if not seen[a.Name] then
+                seen[a.Name] = true
+                p("  ", a.Name, a.ClassName, "equipada:", tostring(isEquipped(a)))
+                attrs(a, "      ")
+                for _, c in ipairs(a:GetChildren()) do p("      hijo", c.Name, c.ClassName) end
+            end
+        end
+    end
+else p("NO existe powerUpsFolder") end
+
+p("========== 3. EQUIPADOS ==========")
+for _, c in ipairs(lp:GetChildren()) do
+    if c.Name:lower():find("equipped") then
+        p("###", c.Name, c.ClassName)
+        for _, v in ipairs(c:GetChildren()) do
+            p("  ", v.Name, v.ClassName, v:IsA("ObjectValue") and v.Value and v.Value:GetFullName() or "")
+        end
+    end
+end
+
+p("========== 4. REMOTES ==========")
+local names = { "sellPetEvent", "sellPowerUpEvent", "petEvolveEvent", "EvolvePowerUpEvent", "tradingEvent" }
+for _, n in ipairs(names) do
+    local r = ev:FindFirstChild(n)
+    p(n, r and r.ClassName or "NO EXISTE")
+    if r and r:IsA("RemoteEvent") then
+        r.OnClientEvent:Connect(function(...) p("SERVIDOR RESPONDIO en", n, ...) end)
+    end
+end
+
+p("========== 5. ESPIA ACTIVO ==========")
+if hookmetamethod and newcclosure and getnamecallmethod then
+    local old
+    old = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+        local m = getnamecallmethod()
+        if (m == "FireServer" or m == "InvokeServer") and self.Parent == ev then
+            local a = table.pack(...)
+            local out = {}
+            for i = 1, a.n do
+                out[i] = typeof(a[i]) == "Instance" and ("Instance:" .. a[i]:GetFullName()) or (typeof(a[i]) .. ":" .. tostring(a[i]))
+            end
+            print("[SPY]", self.Name, m, table.concat(out, " | "))
+        end
+        return old(self, ...)
+    end))
+    p("Espia listo. Vende/evoluciona UNA pet y UN aura a mano y mira las lineas [SPY].")
+end
+
+local function fire(remote, ...)
+    local args = table.pack(...)
+    if remote:IsA("RemoteFunction") then
+        local res = table.pack(pcall(function() return remote:InvokeServer(table.unpack(args, 1, args.n)) end))
+        p("   Invoke resultado:", table.unpack(res, 1, res.n))
+    else
+        local ok, err = pcall(function() remote:FireServer(table.unpack(args, 1, args.n)) end)
+        p("   Fire ok:", ok, err)
+    end
+end
+local function waitGone(item, t)
+    local s = os.clock()
+    while os.clock() - s < t do
+        if not item.Parent then return true end
+        task.wait(0.05)
+    end
+    return not item.Parent
+end
+
+p("========== 6. PRUEBAS ==========")
+if TEST_SELL_PET and PET_NAME ~= "" then
+    local pet = findItem(petsFolder, PET_NAME)
+    local r = ev:FindFirstChild("sellPetEvent")
+    if not pet then p("SELL PET: no encontre una pet libre llamada", PET_NAME)
+    elseif r then
+        local variants = { { "sellPet", pet, "" }, { "sellPet", pet }, { "sellPet", pet.Name } }
+        for i, v in ipairs(variants) do
+            p("SELL PET variante", i)
+            fire(r, table.unpack(v))
+            if waitGone(pet, 3) then p("   >>> FUNCIONO con variante", i) break
+            else p("   no desaparecio") end
+        end
+    end
+end
+
+if TEST_SELL_AURA and AURA_NAME ~= "" then
+    local aura = findItem(auraFolder, AURA_NAME)
+    local r = ev:FindFirstChild("sellPowerUpEvent")
+    if not aura then p("SELL AURA: no encontre un aura libre llamada", AURA_NAME)
+    elseif r then
+        fire(r, "sellPowerUp", aura)
+        p("   >>> desaparecio:", tostring(waitGone(aura, 3)))
+    end
+end
+
+if TEST_EVOLVE_PET and PET_NAME ~= "" then
+    local r = ev:FindFirstChild("petEvolveEvent")
+    local list = findN(petsFolder, PET_NAME, 5)
+    p("EVOLVE PET: copias libres:", #list)
+    if r and #list >= 5 then
+        local before = snapshot(petsFolder)
+        fire(r, "evolvePet", PET_NAME)
+        task.wait(3)
+        diff(before, snapshot(petsFolder))
+    end
+end
+
+if TEST_EVOLVE_AURA and AURA_NAME ~= "" then
+    local r = ev:FindFirstChild("EvolvePowerUpEvent")
+    local list = findN(auraFolder, AURA_NAME, 5)
+    p("EVOLVE AURA: copias libres:", #list)
+    if r and #list >= 5 then
+        local before = snapshot(auraFolder)
+        fire(r, "evolvePowerUp", list[5])
+        task.wait(3)
+        diff(before, snapshot(auraFolder))
+    end
+end
+p("========== FIN ==========")
