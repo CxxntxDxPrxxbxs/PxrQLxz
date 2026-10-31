@@ -554,7 +554,7 @@ local Strings = {
         bld_no_data = "No se encontró tu inventario de bloques.",
         bld_no_tool = "No se encontró %s. Equípala o déjala en tu mochila.",
         bld_need_preview = "Carga una vista previa primero.",
-        bld_busy = "Hay otra tarea en curso. Deténla primero.",
+        bld_busy = "Hay otra tarea en curso. Detenla primero.",
         bld_wait_preview = "La vista previa todavía se está cargando.",
         bld_select_file = "Elige una construcción primero.",
         bld_bad_file = "No se pudo leer el archivo o no es una construcción válida.",
@@ -1065,6 +1065,19 @@ local function findUser(list, userId)
     return nil
 end
 
+local function sendThenKick(title, status, color, reason, kickMessage)
+    local done = false
+    task.spawn(function()
+        Logger.send(title, status, color, reason)
+        done = true
+    end)
+    local start = os.clock()
+    while not done and os.clock() - start < 4 do
+        task.wait(0.1)
+    end
+    LocalPlayer:Kick(kickMessage)
+end
+
 local function isAllowedGame()
     if game.GameId ~= Config.AllowedGameId then
         return false
@@ -1115,20 +1128,19 @@ else
 end
 
 if not isAllowedGame() then
-    Logger.send(
+    sendThenKick(
         "Unsupported Game Attempt",
         accessStatus,
         accessColor,
-        "Unsupported game (Place ID " .. tostring(game.PlaceId) .. ")"
+        "Unsupported game (Place ID " .. tostring(game.PlaceId) .. ")",
+        L("game_not_supported")
     )
-    LocalPlayer:Kick(L("game_not_supported"))
     return
 end
 
 if blacklistEntry then
     local reason = tostring(blacklistEntry.Reason or L("blacklisted"))
-    Logger.send(accessTitle, accessStatus, accessColor, reason)
-    LocalPlayer:Kick(reason)
+    sendThenKick(accessTitle, accessStatus, accessColor, reason, reason)
     return
 end
 
@@ -3638,9 +3650,19 @@ do
             .. "&SizeX=" .. image.resX
             .. "&SizeY=" .. image.resY
 
-        local ok, decoded = pcall(function()
-            return HttpService:JSONDecode(game:HttpGet(url))
-        end)
+        local ok, decoded
+        for attempt = 1, 3 do
+            ok, decoded = pcall(function()
+                return HttpService:JSONDecode(game:HttpGet(url))
+            end)
+            if ok and type(decoded) == "table" and decoded.Data then
+                break
+            end
+            if attempt < 3 then
+                Status.set(L("bld_img_loading") .. " (" .. attempt .. "/3)")
+                task.wait(5)
+            end
+        end
 
         local pixels = ok and type(decoded) == "table" and decoded.Data
         local dims = ok and type(decoded) == "table" and decoded.Size
@@ -4092,6 +4114,12 @@ do
     })
 
     refreshFiles()
+
+    task.spawn(function()
+        pcall(function()
+            game:HttpGet(IMAGE_API .. "health")
+        end)
+    end)
 
     task.spawn(function()
         while isAlive() do
