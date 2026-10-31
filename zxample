@@ -2365,7 +2365,7 @@ do
     local MIN_SCALE = 5
     local MAX_SCALE = 1000
 
-    local IMAGE_API = "https://novakool.pythonanywhere.com/"
+    local IMAGE_API = "https://mystery-image.onrender.com/"
     local IMAGE_MIN_RES = 10
     local IMAGE_MAX_RES = 320
     local IMAGE_LIFT = 10
